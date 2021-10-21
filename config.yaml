@@ -3,8 +3,8 @@
 #
 db:
   #path to gtdb database
-  gtdb_db: data/databases/release95
+  gtdb_db: /athena/masonlab/scratch/databases/metagenomics/GTDBTk_R202
   #path to mash database of RefSeq
-  mash_RefSeq: data/databases/refseq.msh
+  mash_RefSeq: /athena/masonlab/scratch/databases/metagenomics/RefSeq_R98/refseq.msh
 
 

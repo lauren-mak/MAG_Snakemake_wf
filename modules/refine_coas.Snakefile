@@ -15,27 +15,29 @@
 
 # vim: set ft=python:
 
-
+# concoct=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/concoct_bins"),
+# -C {params.concoct}
+# checkm data setRoot ~/checkm_database/
 rule bin_refinement_coas:
     input:
-        join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/done.txt"),
+        join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/concoct_done.txt"),
     output:
         join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap_bin_refinement/metawrap_50_10_bins/done.txt"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/binning.yaml"
     singularity:
         "shub://sskashaf/Containers:metawrap"
     params:
         metabat=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/metabat2_bins"),
-        maxbin=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/maxbin2_bins"),
+        maxbin=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/maxbin2_bins"),  
         concoct=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/concoct_bins"),
         outdir=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap_bin_refinement"),
     threads: workflow.cores
     shell:
-        """
-        checkm data setRoot ~/checkm_database/
+        """ 
         rm -rf {params.outdir}
-        rm -rf {output}
         metawrap bin_refinement -o {params.outdir} -t {threads} -A {params.metabat} -B {params.maxbin} -C {params.concoct} -c 50 -x 10
-         touch {output}
+        touch {output}
         """
 
 
@@ -90,7 +92,7 @@ rule copy_refined_coas:
         touch {output}
         """
 
-
+# checkm data setRoot ~/checkm_database/
 rule checkm_coas:
     input:
         expand(join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap_bin_refinement/copied.txt"), sample=COAS),
@@ -103,8 +105,7 @@ rule checkm_coas:
     singularity:
         "shub://sskashaf/Containers:metawrap"
     shell:
-        """
-        checkm data setRoot ~/checkm_database/
+        """ 
         rm -rf {params.outdir}
         checkm lineage_wf -t {threads} -x {params.ext} --tab_table -f {output} {params.indir} {params.outdir}
         """

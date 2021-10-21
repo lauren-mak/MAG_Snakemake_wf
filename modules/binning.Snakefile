@@ -20,43 +20,40 @@ def get_sample_reads_1(wildcards):
     sample_reads = []
     sample_file = "coassembly_runs.txt"
     df = pd.read_csv(sample_file, sep="\t")
-    reads1 = df.loc[df["coassembly"] == wildcards.sample, "r1"]
-    r1 = reads1.str.split(",", expand=True)
-    r1 = r1.values.tolist()
-    return r1
+    print(df, file=sys.stderr)
+    datasets = df[df["coassembly"] == wildcards.sample]["datasets"][0].split(",") # S1,S2
+    prefix = join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie", "singlerun")
+    r1_lst = [join(prefix, i + "_1.fastq") for i in datasets]
+    return r1_lst
 
 
 def get_sample_reads_2(wildcards):
     sample_reads = []
     sample_file = "coassembly_runs.txt"
     df = pd.read_csv(sample_file, sep="\t")
-    reads2 = df.loc[df["coassembly"] == wildcards.sample, "r2"]
-    r2 = reads2.str.split(",", expand=True)
-    r2 = r2.values.tolist()
-    return r2
+    print(df, file=sys.stderr)
+    datasets = df[df["coassembly"] == wildcards.sample]["datasets"][0].split(",") # S1,S2
+    prefix = join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie", "singlerun")
+    r2_lst = [join(prefix, i + "_2.fastq") for i in datasets]
+    return r2_lst
 
 
 def metawrap_cmmd(wildcards):
-    sample_reads = []
-    sample_file = "coassembly_runs.txt"
-    df = pd.read_csv(sample_file, sep="\t")
-    reads2 = df.loc[df["coassembly"] == wildcards.sample, "r2"]
-    r2 = reads2.str.cat(sep=" ")
-    r2 = r2.replace(",", " ")
-    reads1 = df.loc[df["coassembly"] == wildcards.sample, "r1"]
-    r1 = reads1.str.cat(sep=" ")
-    r1 = r1.replace(",", " ")
-    cmmd = r1, " ", r2
+    r1_lst = get_sample_reads_1(wildcards)
+    r2_lst = get_sample_reads_2(wildcards)
+    cmmd = " ".join(r1_lst) + " " + " ".join(r2_lst)
     return cmmd
 
 
 checkpoint metawrap_binning:
     input:
-        fwd=join(DATA_DIR, preprocessing_dir, "processed/singlerun/{sample}_1.fastq"),
-        rev=join(DATA_DIR, preprocessing_dir, "processed/singlerun/{sample}_2.fastq"),
+        fwd=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{sample}_1.fastq"),
+        rev=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{sample}_2.fastq"),
         fasta=join(DATA_DIR, assembly_dir, "singlerun/{sample}/scaffolds.fasta"),
     output:
-        outfile=join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap/done.txt"),
+        outfile=join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap/metawrap_done.txt"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/binning.yaml"
     singularity:
         "shub://sskashaf/Containers:metawrap"
     params:
@@ -70,8 +67,29 @@ checkpoint metawrap_binning:
         """
         rm -rf {params.outdir}
         metawrap binning -t {threads} -m {resources.mem}\
-        -a {input.fasta} --maxbin2 --metabat2 --concoct \
+        -a {input.fasta} --maxbin2 --metabat2  \
         -l {params.mincontiglength} -o {params.outdir} {input.fwd} {input.rev}
+        touch {output.outfile}
+        """
+
+
+checkpoint concoct_binning:
+    input:
+        join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap/metawrap_done.txt"),
+    output:
+        outfile=join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap/concoct_done.txt"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/concoct.yaml" 
+    params:
+        outdir=join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap"),
+        mincontiglength=2500,
+    threads: workflow.cores
+    resources:
+        time=lambda wildcards, attempt: 20 * attempt,
+        mem=lambda wildcards, attempt: 80 * attempt,
+    shell:
+        """
+        /home/lam4003/bin/MAG_Snakemake_wf/scripts/concoct.sh {params.outdir} {params.mincontiglength} 
         touch {output.outfile}
         """
 
@@ -82,7 +100,9 @@ checkpoint metawrap_binning_coas:
         unpack(get_sample_reads_2),
         join(DATA_DIR, assembly_dir, "coassembly/{sample}/scaffolds.fasta"),
     output:
-        outfile=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/done.txt"),
+        outfile=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/metawrap_done.txt"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/binning.yaml"
     params:
         assembly=join(DATA_DIR, assembly_dir, "coassembly/{sample}/scaffolds.fasta"),
         outdir=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/"),
@@ -98,10 +118,33 @@ checkpoint metawrap_binning_coas:
         """
         rm -rf {params.outdir}
         metawrap binning -t {threads} -m {resources.mem} \
-        -a {params.assembly} --metabat2 --maxbin2 --concoct \
+        -a {params.assembly} --metabat2 --maxbin2  \
         -l {params.mincontiglength} -o {params.outdir} {params.reads}
         touch {output}
         """
+
+
+checkpoint concoct_binning_coas:
+    input:
+        join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/metawrap_done.txt"),
+    output:
+        outfile=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/concoct_done.txt"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/concoct.yaml"
+    params:
+        outdir=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/"),
+        mincontiglength=2500,
+    threads: workflow.cores
+    resources:
+        time=lambda wildcards, attempt: 20 * attempt,
+        mem=lambda wildcards, attempt: 80 * attempt,
+    shell:
+        """
+        /home/lam4003/bin/MAG_Snakemake_wf/scripts/concoct.sh {params.outdir} {params.mincontiglength}
+        touch {output.outfile}
+        """
+
+
 # This file is part of MAG Snakemake workflow.
 #
 # MAG Snakemake workflow is free software: you can redistribute it and/or modify

@@ -46,12 +46,18 @@ for (r in ranks[2:(length(ranks)-1)]){
 
   other.ranks = data.frame(Var1=other.name, Freq=other.freq, Prop=other.prop)
   novel.ranks = data.frame(Var1=novel.name, Freq=novel.freq, Prop=novel.prop)
+ 
+  # print(rank.present)
+  # print(gtdb.ranks)
+  # print(other.ranks)
+  # print(novel.ranks)
 
   ranks.fi = rbind(other.ranks, gtdb.ranks)
   ranks.fi = rbind(novel.ranks, ranks.fi)
 
   ranks.fi$Rank = r
-  ranks.fi$Colour=c("#999999","#CAB2D6","#A6CEE3","#FF7F00","#FB9A99","#E31A1C","#B2DF8A","#33A02C","#1F78B4")
+  col_options = c("#999999","#CAB2D6","#A6CEE3","#FF7F00","#FB9A99","#E31A1C","#B2DF8A","#33A02C","#1F78B4")
+  ranks.fi$Colour = col_options[1:nrow(ranks.fi)]
   
   if(exists("gtdb.fi.bac")){
     gtdb.fi.bac = rbind(gtdb.fi.bac, ranks.fi)

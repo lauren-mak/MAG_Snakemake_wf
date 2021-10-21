@@ -19,8 +19,8 @@
 
 rule mapreads_scaffold:
     input:
-        fwd=join(DATA_DIR, preprocessing_dir, "processed/singlerun/{run}_1.fastq"),
-        rev=join(DATA_DIR, preprocessing_dir, "processed/singlerun/{run}_2.fastq"),
+        fwd=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{run}_1.fastq"),
+        rev=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{run}_2.fastq"),
         scaffold=join(DATA_DIR, assembly_dir, "singlerun/{run}/scaffolds.fasta"),
     output:
         flagstat=join(DATA_DIR, assembly_dir, "singlerun/{run}/mapreads/flagstat.txt"),
@@ -84,7 +84,7 @@ rule aggregate_mapreads_scaffold:
 
 rule cat_MAGs:
     input:
-        out=join(DATA_DIR, binning_analyses, "singlerun/dRep/data_tables/Sdb.csv"),
+        out=join(DATA_DIR, binning_analyses, "singlerun/dRep/done.txt"),
     output:
         join(DATA_DIR, binning_analyses, "singlerun/framework/bwa-ref_name_vf/ref-db.fasta"),
     singularity:
@@ -116,8 +116,8 @@ rule cat_MAGs_coas:
 
 rule readmap:
     input:
-        fwd=join(DATA_DIR, preprocessing_dir, "processed/singlerun/{run}_1.fastq"),
-        rev=join(DATA_DIR, preprocessing_dir, "processed/singlerun/{run}_2.fastq"),
+        fwd=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{run}_1.fastq"),
+        rev=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{run}_2.fastq"),
         catalogue=join(DATA_DIR, binning_analyses, "singlerun/framework/bwa-ref_name_vf/ref-db.fasta"),
     output:
         flagstat=join(DATA_DIR, binning_analyses, "singlerun/framework/mapreads/flagstat/{run}.txt"),
@@ -137,8 +137,8 @@ rule readmap:
 
 rule readmap_coassembly:
     input:
-        fwd=join(DATA_DIR, preprocessing_dir, "processed/singlerun/{run}_1.fastq"),
-        rev=join(DATA_DIR, preprocessing_dir, "processed/singlerun/{run}_2.fastq"),
+        fwd=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{run}_1.fastq"),
+        rev=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{run}_2.fastq"),
         catalogue=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/bwa-ref_name_vf/ref-db.fasta"),
     output:
         flagstat=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/flagstat/{run}.txt"),
@@ -223,22 +223,20 @@ rule write_scaffold_coas:
         outf.close()
 
 
-# PLOTTING
-
-rule plot_framework:
-    input:
-        mapreads_sr=join(DATA_DIR, binning_analyses, "singlerun/framework/mapreads/sr_catalogue_mapreads.tab"),
-        mapreads_coas=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/coas_catalogue_mapreads.tab"),
-        flagstat=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/flagstat_sum.txt"),
-        readcounts=join(DATA_DIR, preprocessing_dir, "readcounts.tsv"),
-        dRep=join(DATA_DIR, binning_analyses, "singlerun/dRep/data_tables/Sdb.csv"),
-    output:
-        join(DATA_DIR, "figures/perassemb_perref.png"),
-    singularity:
-        "shub://sskashaf/MAG_wf_containers_2021:r"
-    params:
-        summary=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/summary_framework.csv")
-    shell:
-        """
-        Rscript scripts/plotting/plot_framework.R {input.readcounts} {input.flagstat} {input.mapreads_sr} {input.mapreads_coas} {params.summary}
-        """
+# rule plot_framework:
+#     input:
+#         mapreads_sr=join(DATA_DIR, binning_analyses, "singlerun/framework/mapreads/sr_catalogue_mapreads.tab"),
+#         mapreads_coas=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/coas_catalogue_mapreads.tab"),
+#         flagstat=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/flagstat_sum.txt"),
+#         readcounts=join(DATA_DIR, preprocessing_dir, "readcounts.tsv"),
+#         dRep=join(DATA_DIR, binning_analyses, "singlerun/dRep/done.txt"),
+#     output:
+#         join(DATA_DIR, "figures/perassemb_perref.png"),
+#     singularity:
+#         "shub://sskashaf/MAG_wf_containers_2021:r"
+#     params:
+#         summary=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/summary_framework.csv")
+#     shell:
+#         """
+#         Rscript /home/lam4003/bin/MAG_Snakemake_wf/scripts/plotting/plot_framework.R {input.readcounts} {input.flagstat} {input.mapreads_sr} {input.mapreads_coas} {params.summary}
+#         """

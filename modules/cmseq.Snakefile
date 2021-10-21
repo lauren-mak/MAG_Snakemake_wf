@@ -16,13 +16,15 @@
 # vim: set ft=python:
 
 
-def get_sample_reads(sample):
+def get_sample_reads_cmseq(sample):
     sample_reads = []
     sample_file = "coassembly_runs.txt"
     df = pd.read_csv(sample_file, sep="\t")
-    r1 = list(df[df["coassembly"] == sample]["r1"])[0].split(",")
-    r2 = list(df[df["coassembly"] == sample]["r2"])[0].split(",")
-    dict = {"r1": r1, "r2": r2}
+    datasets = df[df["coassembly"] == sample]["datasets"][0].split(",") # S1,S2
+    prefix = join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie", "singlerun")
+    r1_lst = [join(prefix, i + "_1.fastq") for i in datasets]
+    r2_lst = [join(prefix, i + "_2.fastq") for i in datasets]
+    dict = {"r1": r1_lst, "r2": r2_lst}
     return dict
 
 
@@ -39,7 +41,7 @@ rule rename_fasta:
         name="{sample}_{file}",
     shell:
         """
-        scripts/rename_multifasta_prefix.py -f {input.MAG} -p {params.name} > {output}
+        /home/lam4003/bin/MAG_Snakemake_wf/scripts/rename_multifasta_prefix.py -f {input.MAG} -p {params.name} > {output}
         """
 
 
@@ -56,6 +58,8 @@ rule prokka:
             binning_analyses,
             "singlerun/cmseq/{sample}/refined_bins_50_10_renamed/{sample}_metawrap_refined_{file}.gff",
         ),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/prokka.yaml"
     singularity:
         "docker://staphb/prokka:1.14.5"
     params:
@@ -81,7 +85,7 @@ rule rename_fasta_coas:
         name="{sample}_{file}",
     shell:
         """
-        scripts/rename_multifasta_prefix.py -f {input.MAG} -p {params.name} > {output}
+        /home/lam4003/bin/MAG_Snakemake_wf/scripts/rename_multifasta_prefix.py -f {input.MAG} -p {params.name} > {output}
         """
 
 
@@ -98,6 +102,8 @@ rule prokka_coas:
             binning_analyses,
             "singlerun_coassembly/cmseq/{sample}/refined_bins_50_10_renamed/{sample}_metawrap_refined_{file}.gff",
         ),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/prokka.yaml"
     singularity:
         "docker://staphb/prokka:1.14.5"
     params:
@@ -112,8 +118,8 @@ rule prokka_coas:
 
 rule cmseq:
     input:
-        r1=join(DATA_DIR, "00_preprocessing/processed/singlerun/{sample}_1.fastq"),
-        r2=join(DATA_DIR, "00_preprocessing/processed/singlerun/{sample}_2.fastq"),
+        r1=join(DATA_DIR, "00_preprocessing/kneaddata_bowtie/singlerun/{sample}_1.fastq"),
+        r2=join(DATA_DIR, "00_preprocessing/kneaddata_bowtie/singlerun/{sample}_2.fastq"),
         MAG=join(
             DATA_DIR,
             binning_analyses,
@@ -134,7 +140,7 @@ rule cmseq:
         dir=join(DATA_DIR, binning_analyses, "singlerun/cmseq/{sample}/refined_bins_50_10_renamed/"),
     shell:
         """
-        scripts/cmseq.sh -t {threads} -i {input.r1} -n {input.r2} -r {input.MAG} -g {input.prokka} -o {params.name}
+        /home/lam4003/bin/MAG_Snakemake_wf/scripts/cmseq.sh -t {threads} -i {input.r1} -n {input.r2} -r {input.MAG} -g {input.prokka} -o {params.name}
         """
 
 
@@ -165,7 +171,7 @@ rule cmseq_coas:
     singularity:
         "shub://sskashaf/MAG_wf_containers_2021:cmseq"
     params:
-        r1=lambda wildcards: get_sample_reads(wildcards.sample)["r1"],
+        r1=lambda wildcards: get_sample_reads_cmseq(wildcards.sample)["r1"],
         name=join(
             DATA_DIR, binning_analyses, "singlerun_coassembly/cmseq/{sample}/refined_bins_50_10_renamed/{sample}_metawrap_refined_{file}"
         ),
@@ -173,7 +179,7 @@ rule cmseq_coas:
         """
         rm -f {output.cmseq}
         rm -f {output.done}
-        for i in {params.r1}; do run=$(basename ${{i}} _1.fastq); scripts/cmseq.sh\
+        for i in {params.r1}; do run=$(basename ${{i}} _1.fastq); /home/lam4003/bin/MAG_Snakemake_wf/scripts/cmseq.sh\
         -t {threads} -i ${{i}} -n ${{i%%_1.fastq}}_2.fastq -r {input.MAG} -g {input.prokka}\
         -o {params.name}_${{run}}; awk 'NR==2' {params.name}_${{run}}.cmseq.csv >> {output.cmseq};done
 
@@ -253,15 +259,21 @@ rule aggregate_cmseq_coas:
         """
 
 
-rule plot_cmseq:
-    input:
-        coas=join(DATA_DIR, binning_analyses, "singlerun_coassembly/cmseq/summ_cmseq_all.csv"),
-        sr=join(DATA_DIR, binning_analyses, "singlerun/cmseq/summ_cmseq_all.csv"),
-    output:
-        join(DATA_DIR, "figures/cmseq_plot.png"),
-    singularity:
-        "shub://sskashaf/MAG_wf_containers_2021:r"
-    shell:
-        """
-        Rscript scripts/plotting/plot_cmseq.R {input.sr} {input.coas}
-        """
+# rule plot_cmseq:
+#     input:
+#         coas=join(DATA_DIR, binning_analyses, "singlerun_coassembly/cmseq/summ_cmseq_all.csv"),
+#         sr=join(DATA_DIR, binning_analyses, "singlerun/cmseq/summ_cmseq_all.csv"),
+#     output:
+#         join(DATA_DIR, "figures/cmseq_plot.png"),
+#     singularity:
+#         "shub://sskashaf/MAG_wf_containers_2021:r"
+#     shell:
+#         """
+# 	if [ -s {input.sr} ] && [ -s {input.coas} ];
+#         then
+#                 Rscript /home/lam4003/bin/MAG_Snakemake_wf/scripts/plotting/plot_cmseq.R {input.sr} {input.coas}
+#         else
+#                 echo "{input.sr} or {input.coas} are empty. Empty plot printed."
+#                 touch {output} # Creates an empty plot file to satisfy requirements
+#         fi
+#         """

@@ -63,8 +63,11 @@ rule dnadiff:
         """
         while read col1 col2 rem
           do
-            echo 'dnadiff ${{col1}} ${{col2}} -p ${{col1%%.fasta}}_${{col2%%.fa}}_'
-            dnadiff ${{col1}} ${{col2}} -p {params.outdir}/{params.bins}
+            echo "dnadiff $col1 $col2 -p ${{col1%%.fasta}}_${{col2%%.fa}}_"
+            REF_TMP="{params.outdir}/{params.bins}.MAG_ref.fa"
+            zcat $col1 > $REF_TMP
+            dnadiff ${{REF_TMP}} ${{col2}} -p {params.outdir}/{params.bins}
+            rm $REF_TMP
           done < {input.bestmash}
         """
 
@@ -109,7 +112,6 @@ rule parse_dnadiff:
             outf.writelines(line + "\n")
 
 
-
 rule aggregate_dnadiff:
     input:
         lambda wildcards: expand(rules.parse_dnadiff.output, i=aggregate_bins(wildcards), sample=wildcards.sample),
@@ -117,7 +119,13 @@ rule aggregate_dnadiff:
         join(DATA_DIR, binning_analyses, "singlerun_coassembly/MAG_RefSeq/dnadiff/singlerun/dnadiff_{sample}_summary.tsv"),
     shell:
         """
-        cat {input}>{output}
+        tmp=`echo -n "{input}" | wc -c`
+        if [ $tmp -gt 0 ]; # Only if there are (refined) bins generated
+        then
+            cat {input}>{output}
+        else
+            touch {output}
+        fi
         """
 
 
@@ -150,16 +158,16 @@ rule summarize_dnadiff:
         """
 
 
-rule plot_dnadiff:
-    input:
-        summ=join(DATA_DIR, binning_analyses, "singlerun_coassembly/MAG_RefSeq/dnadiff/dnadiff_summary.tsv"),
-        checkm_sr=join(DATA_DIR, binning_analyses, "singlerun/checkm/checkm_metrics.csv"),
-        checkm_coas=join(DATA_DIR, binning_analyses, "singlerun_coassembly/checkm/checkm_metrics.csv"),
-    output:
-        join(DATA_DIR, "figures/dnadiff.png"),
-    singularity:
-        "shub://sskashaf/MAG_wf_containers_2021:r"
-    shell:
-        """
-        Rscript scripts/plotting/dnadiff_plot.R {input.checkm_sr} {input.checkm_coas} {input.summ}
-        """
+# rule plot_dnadiff:
+#     input:
+#         summ=join(DATA_DIR, binning_analyses, "singlerun_coassembly/MAG_RefSeq/dnadiff/dnadiff_summary.tsv"),
+#         checkm_sr=join(DATA_DIR, binning_analyses, "singlerun/checkm/checkm_metrics.csv"),
+#         checkm_coas=join(DATA_DIR, binning_analyses, "singlerun_coassembly/checkm/checkm_metrics.csv"),
+#     output:
+#         join(DATA_DIR, "figures/dnadiff.png"),
+#     singularity:
+#         "shub://sskashaf/MAG_wf_containers_2021:r"
+#     shell:
+#         """
+#         Rscript /home/lam4003/bin/MAG_Snakemake_wf/scripts/plotting/dnadiff_plot.R {input.checkm_sr} {input.checkm_coas} {input.summ}
+#         """

@@ -15,25 +15,30 @@
 
 # vim: set ft=python:
 
-
+# concoct=join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap/concoct_bins"),
+# -C {params.concoct}
+# checkm data setRoot ~/checkm_database/
 rule bin_refinement:
     input:
-        join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap/done.txt"),
+        join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap/concoct_done.txt"),
     output:
         join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap_bin_refinement/metawrap_50_10_bins/done.txt"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/binning.yaml"
     singularity:
         "shub://sskashaf/Containers:metawrap"
     params:
+        sample_name="{sample}",
         metabat=join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap/metabat2_bins"),
         maxbin=join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap/maxbin2_bins"),
         concoct=join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap/concoct_bins"),
         outdir=join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap_bin_refinement"),
     threads: workflow.cores
     shell:
-        """
-        checkm data setRoot ~/checkm_database/ 
+        """ 
         rm -rf {params.outdir}
-        metawrap bin_refinement -o {params.outdir} -t {threads} -A {params.metabat} -B {params.maxbin} -C {params.concoct} -c 50 -x 10
+        metawrap bin_refinement -o {params.outdir} -t {threads} -A {params.metabat} -B {params.maxbin} -C {params.concoct} -c 50 -x 10 || echo "{params.sample_name} failed to produce refined bins with the thresholds 50% completeness and 10% contamination"
+        mkdir -p {params.outdir}/metawrap_50_10_bins # In case the sample doesn't generate bins
         touch {output}
         """
 
@@ -50,7 +55,10 @@ checkpoint refine_bins_init:
         """
         rm -rf {params.folder}
         mkdir -p {params.folder}
-        cp {params.refined_folder}/*.fa {params.folder}
+        if [ `ls {params.refined_folder} | wc -l` -gt 1 ]; # Only if there are bins generated
+        then
+            cp {params.refined_folder}/*.fa {params.folder}
+        fi
         """
 
 
@@ -90,7 +98,7 @@ rule copy_refined:
         touch {output}
         """
 
-
+# checkm data setRoot ~/checkm_database/
 rule checkm:
     input:
         expand(join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap_bin_refinement/copied.txt"), sample=RUN), 
@@ -104,7 +112,6 @@ rule checkm:
         outdir=join(DATA_DIR, binning_analyses, "singlerun/checkm/"),
     shell:
         """
-        checkm data setRoot ~/checkm_database/
         rm -rf {params.outdir}
         checkm lineage_wf -t {threads} -x {params.ext} --tab_table -f {output} {params.indir} {params.outdir}
         """
@@ -129,16 +136,16 @@ rule parse_checkm:
         """
 
 
-rule plot_checkm:
-    input:
-        sr=join(DATA_DIR, binning_analyses, "singlerun/checkm/checkm_metrics.csv"),
-        coas=join(DATA_DIR, binning_analyses, "singlerun_coassembly/checkm/checkm_metrics.csv"),
-    output:
-        barplot=join(DATA_DIR, "figures/checkm_completeness.png"),
-        barplot2=join(DATA_DIR, "figures/checkm_contam.png"),
-    singularity:
-        "shub://sskashaf/MAG_wf_containers_2021:r"
-    shell:
-        """
-        Rscript scripts/plotting/plot_checkm_mags.R {input.sr} {input.coas}
-        """
+# rule plot_checkm:
+#     input:
+#         sr=join(DATA_DIR, binning_analyses, "singlerun/checkm/checkm_metrics.csv"),
+#         coas=join(DATA_DIR, binning_analyses, "singlerun_coassembly/checkm/checkm_metrics.csv"),
+#     output:
+#         barplot=join(DATA_DIR, "figures/checkm_completeness.png"),
+#         barplot2=join(DATA_DIR, "figures/checkm_contam.png"),
+#     singularity:
+#         "shub://sskashaf/MAG_wf_containers_2021:r"
+#     shell:
+#         """
+#         Rscript /home/lam4003/bin/MAG_Snakemake_wf/scripts/plotting/plot_checkm_mags.R {input.sr} {input.coas}
+#         """

@@ -21,7 +21,7 @@ checkpoint dRep:
         checkm=join(DATA_DIR, binning_analyses, "singlerun/checkm/checkm_metrics.csv"),
     output:
         drep=directory(join(DATA_DIR, binning_analyses, "singlerun/dRep/dereplicated_genomes")),
-        out=join(DATA_DIR, binning_analyses, "singlerun/dRep/data_tables/Sdb.csv"),
+        out=join(DATA_DIR, binning_analyses, "singlerun/dRep/done.txt"),
     threads: workflow.cores
     singularity:
         "shub://sskashaf/MAG_wf_containers_2021:drep"
@@ -30,9 +30,18 @@ checkpoint dRep:
         outdir=join(DATA_DIR, binning_analyses, "singlerun/dRep/"),
     shell:
         """
-         rm -rf {params.outdir}
-         dRep dereplicate -p {threads} {params.outdir} -g {params.indir}/*.fa \
-        -pa 0.9 -sa 0.95 -nc 0.30 -cm larger --genomeInfo {input.checkm} -comp 50 -con 5
+        rm -rf {params.outdir}
+        tmp=`ls {params.indir} | wc -l`
+        if [ `ls {params.indir} | wc -l` -gt 1 ]; # Only if there are multiple bins generated
+        then
+            echo $tmp
+            dRep dereplicate -p {threads} {params.outdir} -g {params.indir}/*.fa \
+            -pa 0.9 -sa 0.95 -nc 0.30 -cm larger --genomeInfo {input.checkm} -comp 50 -con 5
+        else
+            mkdir -p {output.drep}
+            cp {params.indir}/*.fa {output.drep}
+        fi
+        touch {output.out}
         """
 
 
@@ -55,7 +64,7 @@ rule combine_checkm:
 checkpoint dRep_coas:
     input:
         checkm=join(DATA_DIR, binning_analyses, "singlerun_coassembly/checkm_metrics_combined.csv"),
-        out=join(DATA_DIR, binning_analyses, "singlerun/dRep/data_tables/Sdb.csv"),
+        out=join(DATA_DIR, binning_analyses, "singlerun/dRep/done.txt"),
     output:
         drep=directory(join(DATA_DIR, binning_analyses, "singlerun_coassembly/dRep/dereplicated_genomes")),
         out=join(DATA_DIR, binning_analyses, "singlerun_coassembly/dRep/data_tables/Sdb.csv"),
@@ -93,21 +102,21 @@ rule GTDB_TK:
         "docker://quay.io/biocontainers/gtdbtk:1.3.0--py_1"
     shell:
         """
-        real=$(realpath {input.gtdbrelease})
-        rm -rf {params.outdir}
-        export GTDBTK_DATA_PATH=${{real}}
+#         real=$(realpath {input.gtdbrelease})
+#         rm -rf {params.outdir}
+#         export GTDBTK_DATA_PATH=${{real}}
         gtdbtk classify_wf --cpus {threads} --genome_dir {params.indir} --out_dir {params.outdir} -x {params.ext}
         """
 
 
-rule plot_GTDB:
-    input:
-        join(DATA_DIR, binning_analyses, "singlerun_coassembly/GTDB/gtdbtk.bac120.summary.tsv"),
-    output:
-        join(DATA_DIR, "figures/gtdb_bacteria.png"),
-    singularity:
-        "shub://sskashaf/MAG_wf_containers_2021:r"
-    shell:
-        """
-        Rscript scripts/plotting/plot_gtdb.R {input}
-        """
+# rule plot_GTDB:
+#     input:
+#         join(DATA_DIR, binning_analyses, "singlerun_coassembly/GTDB/gtdbtk.bac120.summary.tsv"),
+#     output:
+#         join(DATA_DIR, "figures/gtdb_bacteria.png"),
+#     singularity:
+#         "shub://sskashaf/MAG_wf_containers_2021:r"
+#     shell:
+#         """
+#         Rscript /home/lam4003/bin/MAG_Snakemake_wf/scripts/plotting/plot_gtdb.R {input}
+#         """
