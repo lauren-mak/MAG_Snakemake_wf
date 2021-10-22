@@ -2,10 +2,10 @@
 
 ## Contents
 
-- [Pipeline Setup](##Pipeline-Setup): Installing the pipeline and the required Snakemake conda environment.
-- [Running the Pipeline](##Running-the-Pipeline): Requirements for input files and description of output files. Sample submission commands and scripts for both local and scheduled jobs.
-- [Modifications](##Modifications): Summary of modifications that have been made to the original pipeline.
-- [Citation](##Citation)
+- **Pipeline Setup**: Installing the pipeline and the required Snakemake conda environment.
+- **Running the Pipeline**: Requirements for input files and description of output files. Sample submission commands and scripts for both local and scheduled jobs.
+- **Modifications**: Summary of modifications that have been made to the original pipeline.
+- **More Information**
 
 ## Pipeline Setup
 
@@ -56,8 +56,9 @@ CheckM                            | January 16, 2015 | January 16, 2015 | This i
 - `config.yaml`: Paths to the GTDB and RefSeq databases.
 - `clusterconfig.yaml`: Slurm submission settings. 
 - `Snakefile*`: Set the variable `FASTQ_DIR` to the base location of the input FastQs.
-    - `Snakefile`: For dealing with FastQs directly downloaded from the SRA.
-    - `Snakefile_LD`: For dealing with FastQs available locally. Must be renamed to 'Snakefile'.
+    - `Snakefile`: For FastQs directly downloaded from the SRA.
+    - `Snakefile_LD_SC`: For i) FastQs available locally to be ii) single-sample and co-assembled. Must be renamed to 'Snakefile'.
+    - `Snakefile_LD_SS`: For i) FastQs available locally to be ii) single-sample-assembled only. Must be renamed to 'Snakefile'. For coassembly-only, `cat` all single-sample FastQs together before using the workflow before treating as a single-sample-only run.
 
 #### Input FastQs 
 
@@ -67,20 +68,36 @@ CheckM                            | January 16, 2015 | January 16, 2015 | This i
 
 ### Output
 
+### Final Reports
+
 - All output and intermediate files will be found in `working_dir/data`. If the job was Slurm-scheduled, the rule-speciic logs can be found in `working_dir/logs`. If the job was run locally, no rule-specific logs, unfortunately.
 - The following reports will be found in `working_dir/data/final_reports`:
-- raw_multiqc_report.html: MultiQC report of all input FastQs before Kneaddata cleaning.
-- post_multiqc_report.html: MultiQC report of all input FastQs after Kneaddata cleaning.
-- sr_summ_cmseq_all.csv: CMSeq (strain heterogeneity) summary statistics of single-sample MAGs. 
-- coas_summ_cmseq_all.csv: CMSeq (strain heterogeneity) summary statistics of coassembled MAGs. 
-- gtdbtk.bac120.summary.tsv: GTDB classifications of each classifiable refined MAG bin, with the ANI to the most similar RefSeq reference genome. 
-- readcounts.tsv: Number of reads in each sample's FastQ after Kneaddata cleaning. 
-- flagstat_sum.txt: Proportion of reads in each sample's FastQ that are either uniquely mapped or chimeric over all mapped reads **to the assembled scaffolds** (the other category is multi-mapped).
-- sr_catalogue_mapreads.tab: Proportion of reads in each sample's FastQ that are either uniquely mapped or chimeric over all mapped reads **to the refined MAG bins** (the other category is multi-mapped).
-- coas_catalogue_mapreads.tab: sr_catalogue_mapreads.tab: Proportion of reads in the FastQs in each coassembly set that are either uniquely mapped or chimeric over all mapped reads **to the refined MAG bins** (the other category is multi-mapped).
-- sr_checkm_metrics.csv: Completeness, contamination, and strain heterogeneity of each single sample-assembled refined MAG bin.
-- coas_checkm_metrics.csv: Completeness, contamination, and strain heterogeneity of each coassembled refinedMAG bin.
-- dnadiff_summary.tsv: Comparison between each refined MAG bin (single-sample and coassembly) and the most similar RefSeq reference genome. Includes total bases in reference genome, the number of aligned bases, and the average identity. 
+    - **raw_multiqc_report.html**: MultiQC report of all input FastQs before Kneaddata cleaning.
+    - **post_multiqc_report.html**: MultiQC report of all input FastQs after Kneaddata cleaning.
+    - **sr_summ_cmseq_all.csv**: CMSeq (strain heterogeneity) summary statistics of single-sample MAGs. 
+    - **coas_summ_cmseq_all.csv**: CMSeq (strain heterogeneity) summary statistics of coassembled MAGs. 
+    - **gtdbtk.bac120.summary.tsv**: GTDB classifications of each classifiable refined MAG bin, with the ANI to the most similar RefSeq reference genome. 
+    - **readcounts.tsv**: Number of reads in each sample's FastQ after Kneaddata cleaning. 
+    - **flagstat_sum.txt**: Proportion of reads in each sample's FastQ that are either uniquely mapped or chimeric over all mapped reads **to the assembled scaffolds** (the other category is multi-mapped).
+    - **sr_catalogue_mapreads.tab**: Proportion of reads in each sample's FastQ that are either uniquely mapped or chimeric over all mapped reads **to the refined MAG bins** (the other category is multi-mapped).
+    - **coas_catalogue_mapreads.tab**: sr_catalogue_mapreads.tab: Proportion of reads in the FastQs in each coassembly set that are either uniquely mapped or chimeric over all mapped reads **to the refined MAG bins** (the other category is multi-mapped).
+    - **sr_checkm_metrics.csv**: Completeness, contamination, and strain heterogeneity of each single sample-assembled refined MAG bin.
+    - **coas_checkm_metrics.csv**: Completeness, contamination, and strain heterogeneity of each coassembled refinedMAG bin.
+    - **dnadiff_summary.tsv**: Comparison between each refined MAG bin (single-sample and coassembly) and the most similar RefSeq reference genome. Includes total bases in reference genome, the number of aligned bases, and the average identity. 
+
+### Generating Figures
+
+- The R commands have to be run separately because R also has GLIBC_2.14 issues in the Snakemake environment.
+```R 
+setwd("/path/to/final/reports")
+source("~/bin/MAG_Snakemake_wf/scripts/plotting/plot_sc.R") # plot_ss.R for single-sample-only 
+
+checkm_df = graph_checkm()
+graph_cmseq()
+graph_alignment()
+graph_dnadiff(checkm_df)
+graph_gtdb()
+```
 
 ### Environment 
 
@@ -162,7 +179,7 @@ sbatch -J job_name ~/bin/MAG_Snakemake_wf/run_msw.sh
 - `dnadiff`: Doesn't take gunzipped FastAs, which are the storage format of RefSeq sequences. RefSeq FastAs are temporarily extracted for `dnadiff` and deleted upon completion.
 - CheckM and GTDB do not set the path to their respective databases within the respective rules. 
 
-## Citation
+## More Information
 
 - No citations available yet for this version of the pipeline
 - For a walk-through of the original pipeline and sample figures, please read and cite: Saheb Kashaf, S., Almeida, A., Segre, J.A. et al. Recovering prokaryotic genomes from host-associated, short-read shotgun metagenomic sequencing data. Nat Protoc (2021). https://doi.org/10.1038/s41596-021-00508-2

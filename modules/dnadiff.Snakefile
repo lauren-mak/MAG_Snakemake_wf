@@ -158,6 +158,20 @@ rule summarize_dnadiff:
         """
 
 
+rule summarize_dnadiff_ss:
+    input:
+        expand(
+            join(DATA_DIR, binning_analyses, "singlerun_coassembly/MAG_RefSeq/dnadiff/singlerun/dnadiff_{sample}_summary.tsv"),
+            sample=RUN,
+        ),
+    output:
+        join(DATA_DIR, binning_analyses, "singlerun_coassembly/MAG_RefSeq/dnadiff/dnadiff_summary_ss.tsv"),
+    shell:
+        """
+        cat {input}>{output}
+        """
+
+
 # rule plot_dnadiff:
 #     input:
 #         summ=join(DATA_DIR, binning_analyses, "singlerun_coassembly/MAG_RefSeq/dnadiff/dnadiff_summary.tsv"),

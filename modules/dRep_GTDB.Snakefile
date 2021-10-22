@@ -109,6 +109,28 @@ rule GTDB_TK:
         """
 
 
+rule GTDB_TK_ss:
+    input:
+        done=join(DATA_DIR, binning_analyses, "singlerun/dRep/done.txt"),
+        gtdbrelease=config["db"]["gtdb_db"],
+    output:
+        join(DATA_DIR, binning_analyses, "singlerun/GTDB/gtdbtk.bac120.summary.tsv"),
+    threads: workflow.cores
+    params:
+        indir=directory(join(DATA_DIR, binning_analyses, "singlerun/dRep/dereplicated_genomes/")),
+        outdir=join(DATA_DIR, binning_analyses, "singlerun/GTDB/"),
+        ext="fa"
+    singularity:
+        "docker://quay.io/biocontainers/gtdbtk:1.3.0--py_1"
+    shell:
+        """
+#         real=$(realpath {input.gtdbrelease})
+#         rm -rf {params.outdir}
+#         export GTDBTK_DATA_PATH=${{real}}
+        gtdbtk classify_wf --cpus {threads} --genome_dir {params.indir} --out_dir {params.outdir} -x {params.ext}
+        """
+
+
 # rule plot_GTDB:
 #     input:
 #         join(DATA_DIR, binning_analyses, "singlerun_coassembly/GTDB/gtdbtk.bac120.summary.tsv"),

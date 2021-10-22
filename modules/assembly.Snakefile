@@ -36,7 +36,7 @@ def est_mem_spades(wildcards):
     if exists(attempt_f):
         attempt_c = (int)(open(attempt_f, 'r').readlines()[0].strip()) + 1
     print(attempt_c, file = open(attempt_f, 'w'))
-    return max(base_mem, 0) + 100 * attempt_c
+    return max(max(base_mem, 0) + 100 * attempt_c, 50)
 
 checkpoint spades:
     input:
@@ -79,7 +79,7 @@ def est_mem_coas(wildcards):
     if exists(attempt_f):
         attempt_c = (int)(open(attempt_f, 'r').readlines()[0].strip()) + 1
     print(attempt_c, file = open(attempt_f, 'w'))
-    return max(base_mem, 0) + 150 * attempt_c
+    return max(max(base_mem, 0) + 50 * attempt_c, 50)
 
 checkpoint spades_coas:
     input:
