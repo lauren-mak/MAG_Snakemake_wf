@@ -61,6 +61,8 @@ COAS = df_coas["coassembly"]
 
 
 all_outfiles = [
+     join(DATA_DIR, "final_reports", "metaQUAST_report.tsv"),
+     join(DATA_DIR, "final_reports", "binning_stats.csv"),
      # Figure 2
      join(DATA_DIR, "final_reports", "raw_multiqc_report.html"),
      join(DATA_DIR, "final_reports", "post_multiqc_report.html"),
@@ -85,6 +87,7 @@ rule copy_output:
     input:
         rawd_qc_in=join(DATA_DIR,preprocessing_dir, "raw_qc/multiqc/raw_multiqc_report.html"),
         post_qc_in=join(DATA_DIR,preprocessing_dir, "postprocessing_qc/multiqc/post_multiqc_report.html"),
+        mtquast_in=join(DATA_DIR, assembly_dir,     "metaQUAST/report.tsv"),
         cmseq_1_in=join(DATA_DIR, binning_analyses, "singlerun/cmseq/summ_cmseq_all.csv"),
         cmseq_2_in=join(DATA_DIR, binning_analyses, "singlerun_coassembly/cmseq/summ_cmseq_all.csv"),
         gtdbt_1_in=join(DATA_DIR, binning_analyses, "singlerun_coassembly/GTDB/gtdbtk.bac120.summary.tsv"),
@@ -98,6 +101,8 @@ rule copy_output:
     output:
         rawd_qc_out=join(DATA_DIR, "final_reports", "raw_multiqc_report.html"),
         post_qc_out=join(DATA_DIR, "final_reports", "post_multiqc_report.html"),
+        mtquast_out=join(DATA_DIR, "final_reports", "metaQUAST_report.tsv"),
+        binning_out=join(DATA_DIR, "final_reports", "binning_stats.csv"),
         cmseq_1_out=join(DATA_DIR, "final_reports", "sr_summ_cmseq_all.csv"),
         cmseq_2_out=join(DATA_DIR, "final_reports", "coas_summ_cmseq_all.csv"),
         gtdbt_1_out=join(DATA_DIR, "final_reports", "gtdbtk.bac120.summary.tsv"),
@@ -115,6 +120,18 @@ rule copy_output:
         mkdir -p {params.outdir}
         cp {input.rawd_qc_in} {output.rawd_qc_out} 
         cp {input.post_qc_in} {output.post_qc_out} 
+        cp {input.mtquast_in} {output.mtquast_out} 
+        sed -i "s/\t/,/g" {output.mtquast_out}
+        sed -i "s/\s/_/g" {output.mtquast_out}
+        sed -i "s/#/Num/g" {output.mtquast_out}
+        sed -i "s/>=//g" {output.mtquast_out}
+        sed -i "s/(//g" {output.mtquast_out}
+        sed -i "s/)//g" {output.mtquast_out}
+        awk 'FNR>1' data/02_binning/*/*/metawrap_bin_refinement/metawrap_50_10_bins.stats > {params.outdir}/tmp.csv
+        sed -i "s/\t/,/g" {params.outdir}/tmp.csv
+        echo -e "bin,completeness,contamination,GC,lineage,N50,size,binner" | cat - {params.outdir}/tmp.csv > {output.binning_out}
+        rm {params.outdir}/tmp.csv
+        wc -l data/02_binning/*/*/metawrap_bin_refinement/metawrap_50_10_bins.stats > {params.outdir}/binning_stats.lst
         cp {input.cmseq_1_in} {output.cmseq_1_out} 
         cp {input.cmseq_2_in} {output.cmseq_2_out} 
         cp {input.gtdbt_1_in} {output.gtdbt_1_out} 

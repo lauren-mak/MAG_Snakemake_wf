@@ -128,3 +128,33 @@ rule parse_checkm_coas:
         rm {params.checkm}
         rm {params.checkm2}
         """
+
+# rule binning_stats_coas:
+#     input:
+#         join(DATA_DIR, binning_dir, "singlerun_coassembly/{sample}/metawrap_bin_refinement/metawrap_50_10_bins.stats"),        
+#     output: 
+#         join(DATA_DIR, binning_dir, "singlerun_coassembly/{sample}.csv"),
+#     params:
+#         sample = "{sample}",
+#     run:
+#         df = pd.read_table(str(input), header = 0, sep = '\t')
+#         df['Sample'] = [params['sample'] for i in range(df.shape[0])]
+#         df.to_csv(output[0], index = False, sep = ',')
+
+
+# def aggregate_stats_coas(wildcards):
+#     s = glob_wildcards(join(DATA_DIR, binning_dir, "singlerun_coassembly/{sample}.csv"))
+#     return expand(join(DATA_DIR, binning_dir, "singlerun_coassembly/{sample}.csv"), sample=s)
+
+
+# rule concat_stats_coas:
+#     input:
+#         aggregate_stats_coas,
+#     output: 
+#         join(DATA_DIR, binning_dir, "coassembly_binning.csv")
+#     run:
+#         """
+#         cat {input} > {output}
+#         """
+
+

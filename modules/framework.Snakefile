@@ -240,3 +240,35 @@ rule write_scaffold_coas:
 #         """
 #         Rscript /home/lam4003/bin/MAG_Snakemake_wf/scripts/plotting/plot_framework.R {input.readcounts} {input.flagstat} {input.mapreads_sr} {input.mapreads_coas} {params.summary}
 #         """
+
+
+
+
+# ASSEMBLY AND BINNING SUMMARY STATISTICS
+
+rule metaquast:
+    input:
+        join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/flagstat_sum.txt"), # Not the most efficient, but most effective without globbing
+    output:
+        join(DATA_DIR, assembly_dir, "metaQUAST/report.tsv"), # Not combined_reference/ because no reference genomes
+    params:
+        outdir=join(DATA_DIR, assembly_dir, "metaQUAST"),
+        mincontiglength=2500, # Report on only the contigs that are binned
+    shell:
+        """
+        scaffolds=`ls data/01_assembly/*/*/scaffolds.fasta`
+        python /home/lam4003/bin/quast-master/metaquast.py -m {params.mincontiglength} -o {params.outdir} $scaffolds
+        """
+
+# rule write_binning_stats:
+#     input:
+#         join(DATA_DIR, binning_dir, "singlerun_binning.csv"),
+#         join(DATA_DIR, binning_dir, "coassembly_binning.csv"),
+#     output:
+#         join(DATA_DIR, binning_dir, "binning_stats.csv"), # Not combined_reference/ because no reference genomes
+#     shell:
+#         """
+#         cat {input} > {output}
+#         """
+
+

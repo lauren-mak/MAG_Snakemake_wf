@@ -1,8 +1,14 @@
+library(plyr) # Must be loaded before to ensure correct overloadings
+library(dplyr)
+library(data.table)
 library(ggplot2)
+library(grid)
 library(gridExtra)
 library(RColorBrewer)
 library(tidyr)
 
+# metaQUAST_report.tsv: Report of reference-free statistics from metaQUAST.
+# binning_stats.csv: Basic binning statistics of single-sample and coassembly refined bins. Comes with binning_stats.lst, which indicates which bins came from which runs. 
 # Figure 3a,b
 # sr_summ_cmseq_all.csv: CMSeq (strain heterogeneity) summary statistics of single-sample MAGs. 
 # coas_summ_cmseq_all.csv: CMSeq (strain heterogeneity) summary statistics of coassembled MAGs. 
@@ -63,8 +69,8 @@ graph_cmseq <- function() {
     cmseq_co$status="Coassembly"
     colnames(cmseq_sr)=c("path", "strain_het")
     colnames(cmseq_co)=c("path", "strain_het")
-    cmseq_sr$strain_het=as.numeric(as.vector(cmseq_sr$strain_het))
-    cmseq_co$strain_het=as.numeric(as.vector(cmseq_co$strain_het))
+    cmseq_sr$strain_het=as.vector(cmseq_sr$strain_het))
+    cmseq_co$strain_het=as.vector(cmseq_co$strain_het))
     cmseq_sr=cmseq_sr[complete.cases(cmseq_sr$strain_het),]
     cmseq_co=cmseq_co[complete.cases(cmseq_co$strain_het),]
 
@@ -97,7 +103,7 @@ graph_dnadiff <- function(checkm_df) {
     ddiff_left <- ggplot(ddiff_checkm, aes(x = Queryaligned, y = Refcovered, color = status, shape = Quality)) +
         geom_point(stroke = 1,size=1) + theme_classic() +
         xlab("MAG Aligned (%)") + ylab("Reference Aligned (%)") +
-        scale_color_manual(breaks=c("Single-sample", "Coassembly"), values=c("#BBBBBB", "#4477AA")) + 
+        scale_color_manual(breaks=c("Single-sample", "Coassembly"), values=c("#BBBBBB", "#4477AA")) +
         scale_shape_manual(values = c(1,2)) +
         guides(color=guide_legend(title="Approach")) +
         xlim(0,100) + ylim(0,100)
@@ -167,15 +173,13 @@ graph_gtdb <- function() {
           scale_x_discrete(limits=ranks[(length(ranks)-1):2]) + 
           theme(legend.position="right") + 
           theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-          theme(axis.title.x = element_text(size=14)) + 
-          theme(axis.text.y = element_text(size=12)) +
-          theme(axis.title.y = element_blank()) +
-          theme(axis.text.x = element_text(size=12)))
+          theme(axis.title.x = element_text(size=14) + axis.text.x = element_text(size=12))) + 
+          theme(axis.title.y = element_blank() + axis.text.y = element_text(size=12))
     ggsave("gtdb_classification.png", tax_class, width = 15, height = 10)
 }
 
 # Figure 4a: Dot plot of reads aligned to the identified reference genomes vs. binned MAGs.
-graph_alignment <- function(){
+graph_alignment <- function() {
     # Load dataframes and format column names/variable types
     read_counts = read.table("readcounts.tsv", header = TRUE, stringsAsFactor = FALSE)
     alned_ref = read.table("flagstat_sum.txt", header = FALSE, stringsAsFactor = FALSE)
@@ -210,6 +214,137 @@ graph_alignment <- function(){
     ggsave("prop_reads_aligned.png", width = 10, height = 10)
 }
 
+horizontal_dot <- function(df, cname) {
+    p = ggplot(df, aes(x = value, y = variable, colour = eval(as.symbol(cname)))) + 
+        geom_point(size = 5) + # theme_classic() + 
+        theme(axis.title.x = element_blank(), axis.text.x = element_text(size = rel(1.2))) + 
+        theme(axis.title.y = element_blank(), axis.text.y = element_text(size = rel(1.4))) + 
+        guides(color=guide_legend(title="Approach")) + theme(legend.position="none")
+    if (max(df$value) > 10000) {
+        p = p + scale_x_continuous(n.breaks = 6, labels = scales::comma) # Increases the number of x-axis ticks
+    } else {
+        p = p + scale_x_continuous(n.breaks = 6)
+    }
+    return(p)
+}
+
+# Figures: De novo assembly summary statistics based on metaQUAST's reference-free report.
+graph_quast <- function() {
+    # Load dataframes and format column names/variable types    
+    raw_df = read.csv("metaQUAST_report.tsv", header = FALSE, row.names = 1, stringsAsFactor = FALSE)
+    parameter_names = rownames(raw_df)
+    trn_df = transpose(raw_df)
+    quast <- as.data.frame(lapply(trn_df, function(x) as.numeric(x)))
+    colnames(trn_df) = parameter_names
+    colnames(quast) = parameter_names
+    quast$Assembly = trn_df$Assembly
+    quast$Assembly = gsub("_scaffolds","", quast$Assembly)
+
+    # Make average usage and average contig length columns
+    quast$Avg_ctg_used = quast$Num_contigs / quast$Num_contigs_0_bp
+    quast$Avg_len_used = quast$Total_length / quast$Total_length_0_bp
+    quast$Avg_binned_contig = quast$Total_length / quast$Num_contigs
+    quast$Avg_all_contig = quast$Total_length_0_bp / quast$Num_contigs_0_bp
+
+    # Reshape dataframe such that the parameters are variables
+    quast_mod = melt(quast, id.vars=c("Assembly"))
+    quast_mod$value = as.numeric(quast_mod$value)
+
+    # Plot 1a: Total (binnable) assembled length 
+    plot_1a = horizontal_dot(quast_mod[quast_mod$variable == "Total_length",], "Assembly") + 
+        scale_y_discrete(labels=c("Total_length" = "Total\nAssembly\nLen. (bp)"))
+
+    # Plot 1b: Number of (binnable) contigs
+    plot_1b = horizontal_dot(quast_mod[quast_mod$variable == "Num_contigs",], "Assembly") +
+        scale_y_discrete(labels=c("Num_contigs" = "Number of\nContigs"))
+
+    # Plot 1c,d: Proportion of binnable vs. unused contigs and lengths
+    plot_1c = horizontal_dot(quast_mod[quast_mod$variable == "Avg_len_used",], "Assembly") + 
+        scale_y_discrete(labels=c("Avg_len_used" = "Proportion of\nBinnable\nAssembly"))
+    plot_1d = horizontal_dot(quast_mod[quast_mod$variable == "Avg_ctg_used",], "Assembly") + 
+        scale_y_discrete(labels=c("Avg_ctg_used" = "Proportion of\nBinnable\nContigs")) + 
+        theme(legend.position="bottom", legend.title=element_text(size=rel(1.2)), legend.text=element_text(size=rel(1.0)))
+
+    # Plot 2: Largest binnable, average binnable, and average all contig length
+    plot_2a = horizontal_dot(quast_mod[quast_mod$variable == "Largest_contig",], "Assembly") +
+        scale_y_discrete(labels=c("Largest_contig" = "Longest\nBinnable\nContig (bp)"))
+    plot_2b = horizontal_dot(quast_mod[quast_mod$variable == "Avg_binned_contig",], "Assembly") +
+        scale_y_discrete(labels=c("Avg_binned_contig" = "Average\nBinnable\nContig (bp)"))
+    plot_2c = horizontal_dot(quast_mod[quast_mod$variable == "Avg_all_contig",], "Assembly") +
+        scale_y_discrete(labels=c("Avg_all_contig" = "Average of All\nContigs (bp)")) +
+        theme(legend.position="bottom", legend.title=element_text(size=rel(1.2)), legend.text=element_text(size=rel(1.0)))
+
+    # Plot 3: NX and LX
+    plot_3a = horizontal_dot(quast_mod[quast_mod$variable == "N50" | quast_mod$variable == "N75",], "Assembly")
+    plot_3b = horizontal_dot(quast_mod[quast_mod$variable == "L50" | quast_mod$variable == "L75",], "Assembly") +
+        theme(legend.position="bottom", legend.title=element_text(size=rel(1.2)), legend.text=element_text(size=rel(1.0)))
+
+    # Make multi-panel figures
+    png("assembly_sumstats.png", width = 900, height = 400)
+    grid.draw(rbind(ggplotGrob(plot_1a), ggplotGrob(plot_1c), ggplotGrob(plot_1b), ggplotGrob(plot_1d)))
+    dev.off()
+    png("contig_sumstats.png", width = 900, height = 300)
+    grid.draw(rbind(ggplotGrob(plot_2a), ggplotGrob(plot_2b), ggplotGrob(plot_2c)))
+    dev.off()
+    png("nx_lx_sumstats", width = 900, height = 200)
+    grid.draw(rbind(ggplotGrob(plot_3a), ggplotGrob(plot_3b)))
+    dev.off()
+}
+
+# Figures: MAG bin N50s and sizes and the binning algorithms they were generated from.
+graph_binning <- function() {
+
+    # Load bin count dataframe and make a vector of sample names
+    count_df = read.table("binning_stats.lst")
+    count_df$V2 = gsub("data/02_binning/", "", count_df$V2)
+    count_df$V2 = gsub("/metawrap_bin_refinement/metawrap_50_10_bins.stats", "", count_df$V2)
+    count_df$V2 = gsub("coassembly/", "", count_df$V2)
+    count_df$V2 = gsub("singlerun/", "", count_df$V2)
+    count_clean_df = head(count_df, -1)
+    samples = c()
+    for (i in (1:nrow(count_clean_df))) {
+        samples = append(samples, replicate(count_clean_df$V1[i] - 1, count_clean_df$V2[i]))
+    }
+
+    # Load statistics dataframe and add the sample name vector. Reshape and set variable types
+    stats_df = read.csv("binning_stats.csv", header = TRUE)
+    stats_df$sample = samples
+    stats_mod_df = melt(stats_df, id.vars=c("sample"))
+    stats_mod_df$sample = as.factor(stats_mod_df$sample)
+    stats_mod_df$value = as.numeric(stats_mod_df$value)
+
+    # Make N50 and bin size multi-panel figure
+    plot_a = horizontal_dot(stats_mod_df[stats_mod_df$variable == "N50",], "sample")
+    plot_b = horizontal_dot(stats_mod_df[stats_mod_df$variable == "size",], "sample") + 
+        scale_y_discrete(labels=c("size" = "Bin Size\n(bp)"))
+
+    png("bin_n50_size.png", width = 900, height = 200)
+    grid.draw(rbind(ggplotGrob(plot_a), ggplotGrob(plot_b))
+    dev.off()
+
+    # Make standalone vs. refiner table from the bin column in the statistics dataframe, then figure 
+    binners_ref = stats_df$binner
+    binners_ref = gsub("bins", "", binners_ref)
+    bin_step_df = as.data.frame(nchar(binners_ref) > 1) # Bins that came from single binner or refinement
+    colnames(bin_step_df) = c("step")
+    bin_step_df$step = revalue(as.character(bin_step$step), c("FALSE"="Standalone Binner", "TRUE"="Bin Refiner"))
+
+    ggplot(bin_step_df, aes(x = step, fill = step)) + geom_bar() +
+        ylab("Number of Bins") + xlab("Binning Step") +
+        guides(color=guide_legend(title="Approach")) + theme(legend.position="none")
+    ggsave("standalone_refinement_bins.png", width = 10, height = 10)
+
+    # Make table of standalone binners, then figure 
+    binners_std = strsplit(paste(binners_ref, collapse = ""), split = "")[[1]]  # Paste puts elements in a vector together into a string, and strsplit pulls them apart into chars
+    bin_std_df = as.data.frame(binners_std)
+    bin_std_df$binners_std = revalue(as.character(bin_std_df$binners_std), c("A"="MetaBAT(2)", "B"="MaxBin2", "C"="CONCOCT"))
+
+    ggplot(bin_std_df, aes(x = binners_std, fill = binners_std)) + geom_bar() +
+        ylab("Number of Bins") + xlab("Binning Algorithm") +
+        guides(color=guide_legend(title="Approach")) + theme(legend.position="none")
+    ggsave("standalone_binner.png", width = 10, height = 10)
+}
+
 # setwd("./")
 # source("~/Dropbox/workspace/MAG_Snakemake_wf/scripts/plotting/plot_all.R")
 
@@ -218,3 +353,5 @@ graph_alignment <- function(){
 # graph_alignment()
 # graph_dnadiff(checkm_df)
 # graph_gtdb()
+# graph_quast()
+# graph_binning()

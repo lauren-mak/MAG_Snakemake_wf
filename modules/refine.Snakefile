@@ -67,7 +67,6 @@ def aggregate_bins(wildcards):
     return glob_wildcards(os.path.join(refine_out, "{bin}.fa")).bin
 
 
-
 rule copy_bins:
     input:
         join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap_bin_refinement/metawrap_50_10_bins/{i}.fa"),
@@ -134,6 +133,34 @@ rule parse_checkm:
         rm {params.checkm}
         rm {params.checkm2}
         """
+
+# checkpoint binning_stats:
+#     input:
+#         rules.bin_refinement.output,
+#     output: 
+#         join(DATA_DIR, binning_dir, "singlerun/{sample}.csv"),
+#     params:
+#         sample = "{sample}",
+#     run:
+#         df = pd.read_table(join(DATA_DIR, binning_dir, "singlerun", params['sample'], "metawrap_bin_refinement/metawrap_50_10_bins.stats"), header = 0, sep = '\t')
+#         df['Sample'] = [params['sample'] for i in range(df.shape[0])]
+#         df.to_csv(output[0], index = False, sep = ',')
+
+
+# def aggregate_stats(wildcards):
+#     s = glob_wildcards(join(DATA_DIR, binning_dir, "singlerun/{sample}.csv"))
+#     return expand(join(DATA_DIR, binning_dir, "singlerun/{sample}.csv"), sample=s)
+
+
+# rule concat_stats:
+#     input:
+#         aggregate_stats,
+#     output: 
+#         join(DATA_DIR, binning_dir, "singlerun_binning.csv")
+#     run:
+#         """
+#         cat {input} > {output}
+#         """
 
 
 # rule plot_checkm:
