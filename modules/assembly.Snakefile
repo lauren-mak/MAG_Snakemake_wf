@@ -36,7 +36,7 @@ def est_mem_spades(wildcards):
     if exists(attempt_f):
         attempt_c = (int)(open(attempt_f, 'r').readlines()[0].strip()) + 1
     print(attempt_c, file = open(attempt_f, 'w'))
-    return max(max(base_mem, 0) + 100 * attempt_c, 50)
+    return max(max(base_mem, 0) + 100 * attempt_c, 50) * 1000
 
 checkpoint spades:
     input:
@@ -46,12 +46,12 @@ checkpoint spades:
     output:
         join(DATA_DIR, assembly_dir, "singlerun/{run}/scaffolds.fasta"),
         join(DATA_DIR, assembly_dir, "singlerun/{run}/contigs.fasta"),
-    threads: workflow.cores
+    threads: workflow.cores,
     params:
         outdir=join(DATA_DIR, assembly_dir, "singlerun/{run}/"),
-    resources:
-        # time=lambda wildcards, attempt: 10 * attempt,
-        mem=est_mem_spades # lambda wildcards, attempt: 200 + 100 * attempt,
+    # resources:
+    #     time=lambda wildcards, attempt: 10 * attempt,
+    #     mem=est_mem_spades, # lambda wildcards, attempt: 200 + 100 * attempt,
     singularity:
         "shub://sskashaf/MAG_wf_containers_2021:assembly"
     shell:
@@ -79,7 +79,7 @@ def est_mem_coas(wildcards):
     if exists(attempt_f):
         attempt_c = (int)(open(attempt_f, 'r').readlines()[0].strip()) + 1
     print(attempt_c, file = open(attempt_f, 'w'))
-    return max(max(base_mem, 0) + 50 * attempt_c, 50)
+    return max(max(base_mem, 0) + 50 * attempt_c, 50) * 1000
 
 checkpoint spades_coas:
     input:
@@ -89,10 +89,10 @@ checkpoint spades_coas:
     output:
         join(DATA_DIR, assembly_dir, "coassembly/{run}/scaffolds.fasta"),
         join(DATA_DIR, assembly_dir, "coassembly/{run}/contigs.fasta"),
-    resources:
-        # time=lambda wildcards, attempt: 10 * attempt,
-        mem=est_mem_coas # lambda wildcards, attempt: 200 + 150 * attempt,
-    threads: workflow.cores
+    # resources:
+    #     time=lambda wildcards, attempt: 10 * attempt,
+    #     mem=est_mem_coas, # lambda wildcards, attempt: 200 + 150 * attempt,
+    threads: workflow.cores,
     params:
         outdir=join(DATA_DIR, assembly_dir, "coassembly/{run}/"),
     singularity:

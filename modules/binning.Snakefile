@@ -58,7 +58,7 @@ checkpoint metawrap_binning:
         "shub://sskashaf/Containers:metawrap"
     params:
         outdir=join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap"),
-        mincontiglength=2500,
+        mincontiglength=1000,
     threads: workflow.cores
     resources:
         time=lambda wildcards, attempt: 20 * attempt,
@@ -82,7 +82,7 @@ checkpoint concoct_binning:
         "/home/lam4003/bin/anaconda3/envs/concoct.yaml" 
     params:
         outdir=join(DATA_DIR, binning_dir, "singlerun/{sample}/metawrap"),
-        mincontiglength=2500,
+        mincontiglength=1000,
     threads: workflow.cores
     resources:
         time=lambda wildcards, attempt: 20 * attempt,
@@ -107,7 +107,7 @@ checkpoint metawrap_binning_coas:
         assembly=join(DATA_DIR, assembly_dir, "coassembly/{sample}/scaffolds.fasta"),
         outdir=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/"),
         reads=lambda wildcards: metawrap_cmmd(wildcards),
-        mincontiglength=2500,
+        mincontiglength=1000,
     singularity:
         "shub://sskashaf/Containers:metawrap"
     threads: workflow.cores
@@ -133,7 +133,7 @@ checkpoint concoct_binning_coas:
         "/home/lam4003/bin/anaconda3/envs/concoct.yaml"
     params:
         outdir=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/"),
-        mincontiglength=2500,
+        mincontiglength=1000,
     threads: workflow.cores
     resources:
         time=lambda wildcards, attempt: 20 * attempt,

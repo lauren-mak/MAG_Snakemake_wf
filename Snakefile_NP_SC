@@ -1,0 +1,160 @@
+# -*- coding: utf-8
+
+# This file is part of MAG Snakemake workflow.
+#
+# MAG Snakemake workflow is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# MAG Snakemake workflow is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with MAG Snakemake workflow.  If not, see <https://www.gnu.org/licenses/>.
+
+#'''
+#   This is a basic framework for recovery and basic quality control of MAGs
+#   To visualize the pipeline: snakemake --dag | dot -Tpng > dag.png
+#'''
+
+#'''
+#   Mod purpose: Pipeline wrapper that allows preprocessing step to ingest local FastQ files instead of using SRA prefetch.
+#   Author: Lauren Mak
+#   Last updated: 09/20/2021
+#'''
+
+__maintainer__ = "Sara Kashaf"
+__email__ = "sskashaf@ebi.ac.uk"
+
+
+import os
+from os.path import join
+import sys
+import glob
+import pandas as pd
+import csv
+
+configfile: "config.yaml"
+
+# Directory structure
+DATA_DIR = "data" #config['data']
+preprocessing_dir = "00_preprocessing"
+assembly_dir = "01_assembly"
+binning_dir = "02_binning"
+binning_analyses = "03_binning_analyses"
+if not os.path.exists("logs"):
+    os.makedirs("logs")
+os.system("chmod +x /home/lam4003/bin/MAG_Snakemake_wf/scripts/*")
+os.system("chmod +x /home/lam4003/bin/MAG_Snakemake_wf/scripts/plotting/*")
+
+# LOAD METADATA
+FASTQ_DIR = '' 
+ILLUMINA_FWD = '' # Required for the Pilon polishing step
+ILLUMINA_REV = ''
+
+df_run = pd.read_csv("runs.txt")
+RUN = df_run["Run"]
+
+df_coas = pd.read_csv("coassembly_runs.txt", sep="\t")
+COAS = df_coas["coassembly"]
+
+
+all_outfiles = [
+     join(DATA_DIR, "final_reports", "metaQUAST_report.tsv"),
+     join(DATA_DIR, "final_reports", "binning_stats.csv"),
+     # Figure 3a,b
+     join(DATA_DIR, "final_reports", "sr_checkm_metrics.csv"),
+     join(DATA_DIR, "final_reports", "coas_checkm_metrics.csv"),
+     # Figure 3c
+     join(DATA_DIR, "final_reports", "sr_summ_cmseq_all.csv"),
+     join(DATA_DIR, "final_reports", "coas_summ_cmseq_all.csv"),     
+     # Figure 3d,e
+     join(DATA_DIR, "final_reports", "dnadiff_summary.tsv"),
+     # Figure 3f
+     join(DATA_DIR, "final_reports", "gtdbtk.bac120.summary.tsv"),
+     # Figure 4a
+     join(DATA_DIR, "final_reports", "readcounts.tsv"),
+     join(DATA_DIR, "final_reports", "flagstat_sum.txt"),
+     join(DATA_DIR, "final_reports", "sr_catalogue_mapreads.tab"),
+     join(DATA_DIR, "final_reports", "coas_catalogue_mapreads.tab"),
+]
+
+rule copy_output:
+    input:
+        rawd_qc_in=join(DATA_DIR,preprocessing_dir, "raw_qc/multiqc/raw_multiqc_report.html"),
+        post_qc_in=join(DATA_DIR,preprocessing_dir, "postprocessing_qc/multiqc/post_multiqc_report.html"),
+        mtquast_in=join(DATA_DIR, assembly_dir,     "metaQUAST/report.tsv"),
+        cmseq_1_in=join(DATA_DIR, binning_analyses, "singlerun/cmseq/summ_cmseq_all.csv"),
+        cmseq_2_in=join(DATA_DIR, binning_analyses, "singlerun_coassembly/cmseq/summ_cmseq_all.csv"),
+        gtdbt_1_in=join(DATA_DIR, binning_analyses, "singlerun_coassembly/GTDB/gtdbtk.bac120.summary.tsv"),
+        fwork_1_in=join(DATA_DIR,preprocessing_dir, "readcounts.tsv"),
+        fwork_2_in=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/flagstat_sum.txt"),
+        fwork_3_in=join(DATA_DIR, binning_analyses, "singlerun/framework/mapreads/sr_catalogue_mapreads.tab"),
+        fwork_4_in=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/coas_catalogue_mapreads.tab"),
+        chckm_1_in=join(DATA_DIR, binning_analyses, "singlerun/checkm/checkm_metrics.csv"),
+        chckm_2_in=join(DATA_DIR, binning_analyses, "singlerun_coassembly/checkm/checkm_metrics.csv"),
+        ddiff_3_in=join(DATA_DIR, binning_analyses, "singlerun_coassembly/MAG_RefSeq/dnadiff/dnadiff_summary.tsv"),
+    output:
+        rawd_qc_out=join(DATA_DIR, "final_reports", "raw_multiqc_report.html"),
+        post_qc_out=join(DATA_DIR, "final_reports", "post_multiqc_report.html"),
+        mtquast_out=join(DATA_DIR, "final_reports", "metaQUAST_report.tsv"),
+        binning_out=join(DATA_DIR, "final_reports", "binning_stats.csv"),
+        cmseq_1_out=join(DATA_DIR, "final_reports", "sr_summ_cmseq_all.csv"),
+        cmseq_2_out=join(DATA_DIR, "final_reports", "coas_summ_cmseq_all.csv"),
+        gtdbt_1_out=join(DATA_DIR, "final_reports", "gtdbtk.bac120.summary.tsv"),
+        fwork_1_out=join(DATA_DIR, "final_reports", "readcounts.tsv"),
+        fwork_2_out=join(DATA_DIR, "final_reports", "flagstat_sum.txt"),
+        fwork_3_out=join(DATA_DIR, "final_reports", "sr_catalogue_mapreads.tab"),
+        fwork_4_out=join(DATA_DIR, "final_reports", "coas_catalogue_mapreads.tab"),
+        chckm_1_out=join(DATA_DIR, "final_reports", "sr_checkm_metrics.csv"),
+        chckm_2_out=join(DATA_DIR, "final_reports", "coas_checkm_metrics.csv"),
+        ddiff_3_out=join(DATA_DIR, "final_reports", "dnadiff_summary.tsv"),
+    params:
+        outdir=join(DATA_DIR, "final_reports"),
+    shell:
+        """
+        mkdir -p {params.outdir}
+        cp {input.rawd_qc_in} {output.rawd_qc_out} 
+        cp {input.post_qc_in} {output.post_qc_out} 
+        cp {input.mtquast_in} {output.mtquast_out} 
+        sed -i "s/\t/,/g" {output.mtquast_out}
+        sed -i "s/\s/_/g" {output.mtquast_out}
+        sed -i "s/#/Num/g" {output.mtquast_out}
+        sed -i "s/>=//g" {output.mtquast_out}
+        sed -i "s/(//g" {output.mtquast_out}
+        sed -i "s/)//g" {output.mtquast_out}
+        awk 'FNR>1' data/02_binning/*/*/metawrap_bin_refinement/metawrap_50_10_bins.stats > {params.outdir}/tmp.csv
+        sed -i "s/\t/,/g" {params.outdir}/tmp.csv
+        echo -e "bin,completeness,contamination,GC,lineage,N50,size,binner" | cat - {params.outdir}/tmp.csv > {output.binning_out}
+        rm {params.outdir}/tmp.csv
+        wc -l data/02_binning/*/*/metawrap_bin_refinement/metawrap_50_10_bins.stats > {params.outdir}/binning_stats.lst
+        cp {input.cmseq_1_in} {output.cmseq_1_out} 
+        cp {input.cmseq_2_in} {output.cmseq_2_out} 
+        cp {input.gtdbt_1_in} {output.gtdbt_1_out} 
+        cp {input.fwork_1_in} {output.fwork_1_out} 
+        cp {input.fwork_2_in} {output.fwork_2_out} 
+        cp {input.fwork_3_in} {output.fwork_3_out} 
+        cp {input.fwork_4_in} {output.fwork_4_out} 
+        cp {input.chckm_1_in} {output.chckm_1_out} 
+        cp {input.chckm_2_in} {output.chckm_2_out} 
+        cp {input.ddiff_3_in} {output.ddiff_3_out} 
+        """
+
+
+rule all:
+   input: all_outfiles
+
+
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/preprocessing_ld.Snakefile" # New
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/coas.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/assembly.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/binning.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/refine.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/dRep_GTDB.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/framework.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/refine_coas.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/cmseq.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/dnadiff.Snakefile"

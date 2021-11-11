@@ -1,2 +1,2 @@
 coassembly	datasets
-Sample_101	101TP2_S65_L002,101TP_S66_L002
+S_coas	S1,S2

@@ -1,5 +1,4 @@
 #'''
-#   Mod purpose: Improved naming structure and organization of slurm logs. Increased time limit for SPAdes.
 #   Author: Lauren Mak
 #   Last updated: 10/17/2021
 #'''
@@ -10,172 +9,149 @@ __default__:
     output: "logs/{rule}.{wildcards}.%j.out"
     error: "logs/{rule}.{wildcards}.%j.err"
     job-name: "{rule}.{wildcards}"
-    time: "06:00:00"
+    time: "7-00:00:00"
 
 
 sra_download:
     mem : 2000
     nCPU: 10
-    time : "01:00:00"
 
 
 kneaddata_bowtie:
     nCPU: 4
-    mem: 40000
-    time      : "04:30:00"
+    mem: 100000
+
+
+bayeshammer:
+    nCPU: 15
+    mem: 100000
 
 
 sort:
     mem : 6000
     nCPU : 20
-    time: "01:00:00"
 
 
 zip_file:
     nCPU: 1
     mem: 5000
-    time      : "09:30:00"
 
 
 spades:
     nCPU: 30
-    mem: 60000
-    time      : "24:00:00"
+    mem: 250000
 
 
 spades_coas:
     nCPU: 30
-    mem: 200000
-    time      : "3-00:00:00"
+    mem: 350000
 
 
 metawrap_binning:
-    mem : 15000
+    mem : 30000
     nCPU: 10
-    time : "4:00:00"
 
 
 concoct_binning:
     mem : 10000
     nCPU: 10
-    time : "2:00:00"
 
 
 metawrap_binning_coas:
-    mem : 20000
+    mem : 60000
     nCPU: 10
-    time : "7:00:00"
 
 
 concoct_binning_coas:
     mem : 15000
     nCPU: 10
-    time : "3:00:00"
 
 
 bin_refinement:
-    mem : 100000
+    mem : 50000
     nCPU: 5
-    time : "5:00:00"
 
 
 bin_refinement_coas:
-    mem : 100000
+    mem : 75000
     nCPU: 5
-    time : "4-07:00:00"
 
 
 checkm:
     mem: 130000
     nCPU: 10
-    time : "20:00:00"
 
 
 checkm_coas:
     mem : 130000
     nCPU: 30
-    time : "20:00:00"
 
 
 mashdist:
     mem : 1000
     nCPU: 1
-    time : "00:30:00"
 
 
 dnadiff:
     mem : 5000
     nCPU: 2
-    time : "02:30:00"
 
 
 prokka:
     mem : 2000
     nCPU : 2
-    time : "02:00:00"
 
 
 prokka_coas:
     mem : 100000
     nCPU : 2
-    time : "00:40:00"
 
 
 cmseq:
     mem : 4000
     nCPU : 2
-    time : "02:00:00"
 
 
 cmseq_coas:
     mem : 10000
     nCPU : 2
-    time : "10:00:00"
 
 
 dRep_95:
     mem : 10000
     nCPU : 30
-    time : "5:00:00"
 
 
 dRep_95_coas:
     mem : 10000
     nCPU : 30
-    time : "5:00:00"
 
 
 GTDB_TK:
     mem : 500000
     nCPU: 2
-    time : "10:30:00"
 
 
 mapreads_scaffold:
     nCPU: 10
     mem: 5000
-    time      : "03:00:00"
 
 
 cat_MAGs:
     mem : 6000
     nCPU : 10
-    time : "03:00:00"
 
 
 cat_MAGs_coas:
     mem : 6000
     nCPU : 10
-    time : "03:00:00"
 
 
 readmap:
     mem : 5000
     nCPU: 10
-    time : "02:30:00"
 
 
 readmap_coassembly:
     mem : 5000
     nCPU: 10
-    time : "04:50:00"

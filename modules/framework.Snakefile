@@ -253,7 +253,7 @@ rule metaquast:
         join(DATA_DIR, assembly_dir, "metaQUAST/report.tsv"), # Not combined_reference/ because no reference genomes
     params:
         outdir=join(DATA_DIR, assembly_dir, "metaQUAST"),
-        mincontiglength=2500, # Report on only the contigs that are binned
+        mincontiglength=1000, # Report on only the contigs that are binned
     shell:
         """
         scaffolds=`ls data/01_assembly/*/*/scaffolds.fasta`

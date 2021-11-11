@@ -114,7 +114,7 @@ rule kneaddata_bowtie:
         prddir=directory(join(DATA_DIR, preprocessing_dir, "processed/")),
     singularity:
         "shub://sskashaf/MAG_wf_containers_2021:metagenome_preprocessing"
-    threads: workflow.cores
+    threads: workflow.cores,
     shell:
         """
         #this version of kneaddata requires read identifiers (/1, /2). Given we did not download the file from the sra using the option --readids, we need to remove spaces in the headers
@@ -149,7 +149,7 @@ def est_mem_spades(wildcards):
     if exists(attempt_f):
         attempt_c = (int)(open(attempt_f, 'r').readlines()[0].strip()) + 1
     print(attempt_c, file = open(attempt_f, 'w'))
-    return max(max(base_mem, 0) + 100 * attempt_c, 50)
+    return max(max(base_mem, 0) + 100 * attempt_c, 50) * 1000
 
 
 rule bayeshammer:
@@ -164,9 +164,9 @@ rule bayeshammer:
     params:
         prefix=join(DATA_DIR, preprocessing_dir, "processed", "{run}", "corrected", "{run}"),
         outdir=directory(join(DATA_DIR, preprocessing_dir, "processed", "{run}")),
-    threads: workflow.cores
-    resources:
-        mem=est_mem_spades
+    threads: workflow.cores,
+    # resources:
+    #     mem=est_mem_spades,
     shell:
         """
         mkdir -p data/01_assembly/singlerun
@@ -186,7 +186,7 @@ rule postpreprocessing_fastqc_fwd:
         join(DATA_DIR, preprocessing_dir, "postprocessing_qc/fastqc/{run}_1_fastqc.html"),
     params:
         outdir=directory(join(DATA_DIR, preprocessing_dir, "postprocessing_qc/fastqc/")),
-    threads: workflow.cores
+    threads: workflow.cores,
     singularity:
         "docker://quay.io/biocontainers/fastqc:0.11.7--4"
     shell:
