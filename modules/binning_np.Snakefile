@@ -6,7 +6,7 @@ def get_sample_reads(wildcards):
     print(df, file=sys.stderr)
     datasets = df[df["coassembly"] == wildcards.sample]["datasets"][0].split(",") # S1,S2
     prefix = join(DATA_DIR, preprocessing_dir, "singlerun")
-    return [join(prefix, i + ".fastq") for i in datasets]
+    return [join(prefix, i + ".fastq.gz") for i in datasets]
 
 
 def metawrap_cmmd(wildcards):

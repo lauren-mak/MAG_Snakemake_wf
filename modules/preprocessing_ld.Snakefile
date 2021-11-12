@@ -171,7 +171,7 @@ rule bayeshammer:
         """
         mkdir -p data/01_assembly/singlerun
         mkdir -p data/01_assembly/coassembly
-        spades.py --only-error-correction --meta -1 {input.fwd} -2 {input.rev} -o {params.outdir} -t {threads} -m {resources.mem}
+        spades.py --only-error-correction --meta -1 {input.fwd} -2 {input.rev} -o {params.outdir} -t {threads} -m 1000
         mv {params.prefix}_1.00.0_0.cor.fastq.gz {output.fwd}
         mv {params.prefix}_2.00.0_0.cor.fastq.gz {output.rev}
         mv {params.prefix}__unpaired.00.0_0.cor.fastq.gz {output.upd}

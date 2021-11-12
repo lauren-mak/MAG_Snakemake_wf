@@ -59,13 +59,13 @@ checkpoint spades:
         # rm -rf {params.outdir}
         # dmesg -T
         if [ -f "{params.outdir}/K33/assembly_graph.fastg" ]; then
-            spades.py --restart-from k55 -o {params.outdir} -t {threads} -m {resources.mem} # Restart from k = 55
+            spades.py --restart-from k55 -o {params.outdir} -t {threads} -m 1000 # Restart from k = 55
         elif [ -f "{params.outdir}/K21/assembly_graph.fastg" ]; then
-            spades.py --restart-from k33 -o {params.outdir} -t {threads} -m {resources.mem} # Restart from k = 33
+            spades.py --restart-from k33 -o {params.outdir} -t {threads} -m 1000 # Restart from k = 33
         elif [ -f "{params.outdir}/corrected.yaml" ]; then
-            spades.py --restart-from k21 -o {params.outdir} -t {threads} -m {resources.mem} # Restart from k = 21
+            spades.py --restart-from k21 -o {params.outdir} -t {threads} -m 1000 # Restart from k = 21
         else
-            spades.py --only-assembler --meta -1 {input.fwd} -2 {input.rev} -s {input.upd} -o {params.outdir} -t {threads} -m {resources.mem}
+            spades.py --only-assembler --meta -1 {input.fwd} -2 {input.rev} -s {input.upd} -o {params.outdir} -t {threads} -m 1000
         fi
         """
 
@@ -102,12 +102,12 @@ checkpoint spades_coas:
         # rm -rf {params.outdir}
         # dmesg -T
         if [ -f "{params.outdir}/K33/assembly_graph.fastg" ]; then
-            spades.py --restart-from k55 -o {params.outdir} -t {threads} -m {resources.mem} # Restart from k = 55
+            spades.py --restart-from k55 -o {params.outdir} -t {threads} -m 1000 # Restart from k = 55
         elif [ -f "{params.outdir}/K21/assembly_graph.fastg" ]; then
-            spades.py --restart-from k33 -o {params.outdir} -t {threads} -m {resources.mem} # Restart from k = 33
+            spades.py --restart-from k33 -o {params.outdir} -t {threads} -m 1000 # Restart from k = 33
         elif [ -f "{params.outdir}/corrected.yaml" ]; then
-            spades.py --restart-from k21 -o {params.outdir} -t {threads} -m {resources.mem} # Restart from k = 21
+            spades.py --restart-from k21 -o {params.outdir} -t {threads} -m 1000 # Restart from k = 21
         else
-            spades.py --only-assembler --meta -1 {input.fwd} -2 {input.rev} -s {input.upd} -o {params.outdir} -t {threads} -m {resources.mem}
+            spades.py --only-assembler --meta -1 {input.fwd} -2 {input.rev} -s {input.upd} -o {params.outdir} -t {threads} -m 1000
         fi
         """

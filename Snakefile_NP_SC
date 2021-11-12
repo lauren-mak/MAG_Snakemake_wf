@@ -52,14 +52,15 @@ os.system("chmod +x /home/lam4003/bin/MAG_Snakemake_wf/scripts/plotting/*")
 
 # LOAD METADATA
 FASTQ_DIR = '' 
-ILLUMINA_FWD = '' # Required for the Pilon polishing step
-ILLUMINA_REV = ''
 
 df_run = pd.read_csv("runs.txt")
 RUN = df_run["Run"]
 
 df_coas = pd.read_csv("coassembly_runs.txt", sep="\t")
 COAS = df_coas["coassembly"]
+
+df_illumina = pd.read_csv("illumina.txt", sep="\t") # Required for Pilon
+ILLUMINA = df_illumina["reads"]
 
 
 all_outfiles = [
@@ -84,8 +85,6 @@ all_outfiles = [
 
 rule copy_output:
     input:
-        rawd_qc_in=join(DATA_DIR,preprocessing_dir, "raw_qc/multiqc/raw_multiqc_report.html"),
-        post_qc_in=join(DATA_DIR,preprocessing_dir, "postprocessing_qc/multiqc/post_multiqc_report.html"),
         mtquast_in=join(DATA_DIR, assembly_dir,     "metaQUAST/report.tsv"),
         cmseq_1_in=join(DATA_DIR, binning_analyses, "singlerun/cmseq/summ_cmseq_all.csv"),
         cmseq_2_in=join(DATA_DIR, binning_analyses, "singlerun_coassembly/cmseq/summ_cmseq_all.csv"),
@@ -98,8 +97,6 @@ rule copy_output:
         chckm_2_in=join(DATA_DIR, binning_analyses, "singlerun_coassembly/checkm/checkm_metrics.csv"),
         ddiff_3_in=join(DATA_DIR, binning_analyses, "singlerun_coassembly/MAG_RefSeq/dnadiff/dnadiff_summary.tsv"),
     output:
-        rawd_qc_out=join(DATA_DIR, "final_reports", "raw_multiqc_report.html"),
-        post_qc_out=join(DATA_DIR, "final_reports", "post_multiqc_report.html"),
         mtquast_out=join(DATA_DIR, "final_reports", "metaQUAST_report.tsv"),
         binning_out=join(DATA_DIR, "final_reports", "binning_stats.csv"),
         cmseq_1_out=join(DATA_DIR, "final_reports", "sr_summ_cmseq_all.csv"),
@@ -148,13 +145,12 @@ rule all:
    input: all_outfiles
 
 
-include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/preprocessing_ld.Snakefile" # New
-include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/coas.Snakefile"
-include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/assembly.Snakefile"
-include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/binning.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/singlerun_np.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/coas_np.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/binning_np.Snakefile"
 include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/refine.Snakefile"
 include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/dRep_GTDB.Snakefile"
-include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/framework.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/framework_np.Snakefile"
 include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/refine_coas.Snakefile"
-include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/cmseq.Snakefile"
+include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/cmseq_np.Snakefile"
 include: "/home/lam4003/bin/MAG_Snakemake_wf/modules/dnadiff.Snakefile"

@@ -1,32 +1,16 @@
-# This file is part of MAG Snakemake workflow.
-#
-# MAG Snakemake workflow is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-
-# MAG Snakemake workflow is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License
-# along with MAG Snakemake workflow.  If not, see <https://www.gnu.org/licenses/>.
-
-# vim: set ft=python:
 
 # READS MAPPING TO ASSEMBLY
 
+# Replaced bwa (short reads) with minimap2 (long reads)
 rule mapreads_scaffold:
     input:
-        fwd=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{run}_1.fastq"),
-        rev=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{run}_2.fastq"),
-        scaffold=join(DATA_DIR, assembly_dir, "singlerun/{run}/scaffolds.fasta"),
+        fq=join(DATA_DIR, preprocessing_dir, "singlerun/{run}.fastq.gz"),
+        asm=join(DATA_DIR, assembly_dir, "final_polished/singlerun/{run}.polished.fasta"),
     output:
         flagstat=join(DATA_DIR, assembly_dir, "singlerun/{run}/mapreads/flagstat.txt"),
     params:
         dir=join(DATA_DIR, assembly_dir, "singlerun/{run}/mapreads"),
-        scaffold=join(DATA_DIR, assembly_dir, "singlerun/{run}/{run}_scaffolds.fasta"),
+        asm=join(DATA_DIR, assembly_dir, "singlerun/{run}/{run}_scaffolds.fasta"),
         alignedsorted=join(DATA_DIR, assembly_dir, "singlerun//{run}/mapreads/alignedsorted.bam"),
     singularity:
         "shub://sskashaf/MAG_wf_containers_2021:framework"
@@ -34,10 +18,8 @@ rule mapreads_scaffold:
         """
         rm -rf {params.dir}
         mkdir -p {params.dir}
-        scp {input.scaffold} {params.scaffold}
-        bwa index {params.scaffold}
-        bwa mem -t {threads} {params.scaffold} {input.fwd} {input.rev} | samtools view -bS - | \
-        samtools sort -@ {threads} -o {params.alignedsorted} -
+        scp {input.asm} {params.asm}
+        minimap2 -ax map-ont {input.asm} {input.fq} | samtools view -bS - | samtools sort -@ {threads} -o {params.alignedsorted} -
         samtools index {params.alignedsorted}
         samtools flagstat {params.alignedsorted} > {output.flagstat}
         rm {params.alignedsorted}
@@ -110,14 +92,12 @@ rule cat_MAGs_coas:
     shell:
         """
         cat {params.indir}/*.fa>{output}
-        bwa index {output}
         """
 
 
 rule readmap:
     input:
-        fwd=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{run}_1.fastq"),
-        rev=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{run}_2.fastq"),
+        fq=join(DATA_DIR, preprocessing_dir, "singlerun/{run}.fastq.gz"),
         catalogue=join(DATA_DIR, binning_analyses, "singlerun/framework/bwa-ref_name_vf/ref-db.fasta"),
     output:
         flagstat=join(DATA_DIR, binning_analyses, "singlerun/framework/mapreads/flagstat/{run}.txt"),
@@ -127,8 +107,7 @@ rule readmap:
         "shub://sskashaf/MAG_wf_containers_2021:framework"
     shell:
         """
-        bwa mem -t {threads} {input.catalogue} {input.fwd} {input.rev} \
-        | samtools view -bS - | samtools sort -@ {threads} -o {params.alignedsorted} -
+        minimap2 -ax map-ont {input.catalogue} {input.fq} | samtools view -bS - | samtools sort -@ {threads} -o {params.alignedsorted} -
         samtools index {params.alignedsorted}
         samtools flagstat {params.alignedsorted} > {output.flagstat}
         rm {params.alignedsorted}
@@ -137,26 +116,20 @@ rule readmap:
 
 rule readmap_coassembly:
     input:
-        # fwd=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{run}_1.fastq"),
-        # rev=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun/{run}_2.fastq"),
+        fq=join(DATA_DIR, preprocessing_dir, "coassembly/{run}.fastq.gz"),
         catalogue=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/bwa-ref_name_vf/ref-db.fasta"),
     output:
         flagstat=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/flagstat/{run}.txt"),
     params:
-        kdb_dir=join(DATA_DIR, preprocessing_dir, "kneaddata_bowtie/singlerun"),
         alignedsorted=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/flagstat/tmp_{run}.bam"),
     singularity:
         "shub://sskashaf/MAG_wf_containers_2021:framework"
     shell:
         """
-        cat {params.kdb_dir}/*_1.fastq > {params.kdb_dir}/tmp_1.fastq
-        cat {params.kdb_dir}/*_2.fastq > {params.kdb_dir}/tmp_2.fastq
-        bwa mem -t {threads} {input.catalogue} {params.kdb_dir}/tmp_1.fastq {params.kdb_dir}/tmp_2.fastq \
-        | samtools view -bS - | samtools sort -@ {threads} -o {params.alignedsorted} -
+        minimap2 -ax map-ont {input.catalogue} {input.fq} | samtools view -bS - | samtools sort -@ {threads} -o {params.alignedsorted} -
         samtools index {params.alignedsorted}
         samtools flagstat {params.alignedsorted} > {output.flagstat}
         rm {params.alignedsorted}
-        rm {params.kdb_dir}/tmp*
         """
 
 
@@ -227,26 +200,6 @@ rule write_scaffold_coas:
         outf.close()
 
 
-# rule plot_framework:
-#     input:
-#         mapreads_sr=join(DATA_DIR, binning_analyses, "singlerun/framework/mapreads/sr_catalogue_mapreads.tab"),
-#         mapreads_coas=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/coas_catalogue_mapreads.tab"),
-#         flagstat=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/flagstat_sum.txt"),
-#         readcounts=join(DATA_DIR, preprocessing_dir, "readcounts.tsv"),
-#         dRep=join(DATA_DIR, binning_analyses, "singlerun/dRep/done.txt"),
-#     output:
-#         join(DATA_DIR, "figures/perassemb_perref.png"),
-#     singularity:
-#         "shub://sskashaf/MAG_wf_containers_2021:r"
-#     params:
-#         summary=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/summary_framework.csv")
-#     shell:
-#         """
-#         Rscript /home/lam4003/bin/MAG_Snakemake_wf/scripts/plotting/plot_framework.R {input.readcounts} {input.flagstat} {input.mapreads_sr} {input.mapreads_coas} {params.summary}
-#         """
-
-
-
 
 # ASSEMBLY AND BINNING SUMMARY STATISTICS
 
@@ -260,19 +213,7 @@ rule metaquast:
         mincontiglength=1000, # Report on only the contigs that are binned
     shell:
         """
-        scaffolds=`ls data/01_assembly/*/*/scaffolds.fasta`
+        scaffolds=`ls data/01_assembly/final_polished/*/*.polished.fasta`
         python /home/lam4003/bin/quast-master/metaquast.py -m {params.mincontiglength} -o {params.outdir} $scaffolds
         """
-
-# rule write_binning_stats:
-#     input:
-#         join(DATA_DIR, binning_dir, "singlerun_binning.csv"),
-#         join(DATA_DIR, binning_dir, "coassembly_binning.csv"),
-#     output:
-#         join(DATA_DIR, binning_dir, "binning_stats.csv"), # Not combined_reference/ because no reference genomes
-#     shell:
-#         """
-#         cat {input} > {output}
-#         """
-
 

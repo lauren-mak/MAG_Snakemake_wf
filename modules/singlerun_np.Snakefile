@@ -47,7 +47,7 @@ rule filtlong:
 
 rule count_reads:
     input:
-        join(DATA_DIR, preprocessing_dir, "singlerun/{run}_1.fastq.gz"),
+        join(DATA_DIR, preprocessing_dir, "singlerun/{run}.fastq.gz"),
     output:
         join(DATA_DIR, preprocessing_dir, "singlerun/{run}_readcount.csv"),        
     params:
@@ -89,7 +89,7 @@ rule metaflye:
         fi
         """
 
-
+# Temporary BAM: {params.outdir}/{params.sample_name}_tmp.bam. Test to see if pipe works.
 rule polish_mapping:
     input:
         fq=join(DATA_DIR, preprocessing_dir, "singlerun/{run}.fastq.gz"),
@@ -102,9 +102,7 @@ rule polish_mapping:
         outdir=join(DATA_DIR, assembly_dir, "prelim_polished/singlerun"),
     shell:
         """
-        minimap2 -ax map-ont {input.asm} {input.fq} | samtools view -bS - > {params.outdir}/{params.sample_name}_tmp.bam
-        samtools sort -@ {threads} -o {output}
-        rm {params.outdir}/{params.sample_name}_tmp.bam
+        minimap2 -ax map-ont {input.asm} {input.fq} | samtools view -bS - | samtools sort -@ {threads} -o {output} -
         """
 
 rule racon:
@@ -138,12 +136,22 @@ rule medaka:
         """
 
 
+def get_illumina_reads(sample):
+    sample_reads = []
+    sample_file = "illumina.txt"
+    df = pd.read_csv(sample_file, sep="\t")
+    print(df, file=sys.stderr)
+    reads = df[df["sample"] == sample]["reads"][0].split(",") # R1,R2
+    dict = {"fw": reads[0], "rv": reads[1]}
+    print(dict)
+    return dict
+
+
 rule pilon:
     input:
         fq=join(DATA_DIR, preprocessing_dir, "singlerun/{run}.fastq.gz"),
         cn=join(DATA_DIR, assembly_dir, "prelim_polished/singlerun/{run}.medaka.fasta"),
-        fw=ILLUMINA_FWD,
-        rv=ILLUMINA_REV,
+        unpack(lambda wildcards: get_illumina_reads(wildcards.sample)),
     output:
         join(DATA_DIR, assembly_dir, "final_polished/singlerun/{run}.polished.fasta"),
     threads: workflow.cores, 

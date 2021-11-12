@@ -1,0 +1,182 @@
+#'''
+#   Author: Lauren Mak
+#   Last updated: 11/12/2021
+#'''
+
+__default__:
+    nCPU: 1
+    mem: 8000
+    output: "logs/{rule}.{wildcards}.%j.out"
+    error: "logs/{rule}.{wildcards}.%j.err"
+    job-name: "{rule}.{wildcards}"
+    time: "7-00:00:00"
+
+
+porechop:
+    nCPU: 5
+    mem : 10000
+
+
+filtlong:
+    nCPU: 5
+    mem: 10000
+
+
+metaflye:
+    nCPU: 30
+    mem: 400000
+
+
+polish_mapping:
+    nCPU : 5
+    mem : 50000
+
+
+racon:
+    nCPU : 5
+    mem : 50000
+
+
+medaka:
+    nCPU : 5
+    mem : 50000
+
+
+pilon:
+    nCPU : 5
+    mem : 50000
+
+
+metaflye_coas:
+    nCPU: 40
+    mem: 600000
+
+
+polish_mapping_coas:
+    nCPU : 5
+    mem : 75000
+
+
+racon_coas:
+    nCPU : 5
+    mem : 75000
+
+
+medaka_coas:
+    nCPU : 5
+    mem : 75000
+
+
+pilon_coas:
+    nCPU : 5
+    mem : 75000
+
+
+metawrap_binning:
+    mem : 30000
+    nCPU: 10
+
+
+concoct_binning:
+    mem : 10000
+    nCPU: 10
+
+
+metawrap_binning_coas:
+    mem : 60000
+    nCPU: 10
+
+
+concoct_binning_coas:
+    mem : 15000
+    nCPU: 10
+
+
+bin_refinement:
+    mem : 50000
+    nCPU: 5
+
+
+bin_refinement_coas:
+    mem : 75000
+    nCPU: 5
+
+
+checkm:
+    mem: 130000
+    nCPU: 10
+
+
+checkm_coas:
+    mem : 130000
+    nCPU: 30
+
+
+mashdist:
+    mem : 1000
+    nCPU: 1
+
+
+dnadiff:
+    mem : 5000
+    nCPU: 2
+
+
+prokka:
+    mem : 2000
+    nCPU : 2
+
+
+prokka_coas:
+    mem : 100000
+    nCPU : 2
+
+
+cmseq:
+    mem : 4000
+    nCPU : 2
+
+
+cmseq_coas:
+    mem : 10000
+    nCPU : 2
+
+
+dRep_95:
+    mem : 10000
+    nCPU : 30
+
+
+dRep_95_coas:
+    mem : 10000
+    nCPU : 30
+
+
+GTDB_TK:
+    mem : 500000
+    nCPU: 2
+
+
+mapreads_scaffold:
+    nCPU: 10
+    mem: 5000
+
+
+cat_MAGs:
+    mem : 6000
+    nCPU : 10
+
+
+cat_MAGs_coas:
+    mem : 6000
+    nCPU : 10
+
+
+readmap:
+    mem : 5000
+    nCPU: 10
+
+
+readmap_coassembly:
+    mem : 5000
+    nCPU: 10
