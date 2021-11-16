@@ -103,7 +103,7 @@ checkpoint concoct_binning_coas:
     threads: workflow.cores
     resources:
         time=lambda wildcards, attempt: 20 * attempt,
-        mem=lambda wildcards, attempt: 80 * attempt,
+        mem=lambda wildcards, attempt: 120 * attempt,
     shell:
         """
         /home/lam4003/bin/MAG_Snakemake_wf/scripts/concoct.sh {params.outdir} {params.mincontiglength}

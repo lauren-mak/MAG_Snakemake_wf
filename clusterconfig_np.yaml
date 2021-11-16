@@ -88,18 +88,18 @@ metawrap_binning_coas:
 
 
 concoct_binning_coas:
-    mem : 15000
+    mem : 25000
     nCPU: 10
 
 
 bin_refinement:
-    mem : 50000
-    nCPU: 5
+    mem : 100000
+    nCPU: 10
 
 
 bin_refinement_coas:
-    mem : 75000
-    nCPU: 5
+    mem : 150000
+    nCPU: 10
 
 
 checkm:
@@ -179,4 +179,9 @@ readmap:
 
 readmap_coassembly:
     mem : 5000
+    nCPU: 10
+
+
+metaquast:
+    mem : 20000
     nCPU: 10

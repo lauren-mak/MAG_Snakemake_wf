@@ -97,6 +97,7 @@ rule GTDB_TK:
     params:
         indir=directory(join(DATA_DIR, binning_analyses, "singlerun_coassembly/dRep/dereplicated_genomes/")),
         outdir=join(DATA_DIR, binning_analyses, "singlerun_coassembly/GTDB/"),
+        bindir=join(DATA_DIR, binning_analyses),
         ext="fa"
     singularity:
         "docker://quay.io/biocontainers/gtdbtk:1.3.0--py_1"
@@ -106,6 +107,7 @@ rule GTDB_TK:
 #         rm -rf {params.outdir}
 #         export GTDBTK_DATA_PATH=${{real}}
         gtdbtk classify_wf --cpus {threads} --genome_dir {params.indir} --out_dir {params.outdir} -x {params.ext}
+        cp {output} {params.bindir}/gtdbtk.bac120.summary.tsv
         """
 
 
@@ -119,6 +121,7 @@ rule GTDB_TK_ss:
     params:
         indir=directory(join(DATA_DIR, binning_analyses, "singlerun/dRep/dereplicated_genomes/")),
         outdir=join(DATA_DIR, binning_analyses, "singlerun/GTDB/"),
+        bindir=join(DATA_DIR, binning_analyses),
         ext="fa"
     singularity:
         "docker://quay.io/biocontainers/gtdbtk:1.3.0--py_1"
@@ -128,6 +131,7 @@ rule GTDB_TK_ss:
 #         rm -rf {params.outdir}
 #         export GTDBTK_DATA_PATH=${{real}}
         gtdbtk classify_wf --cpus {threads} --genome_dir {params.indir} --out_dir {params.outdir} -x {params.ext}
+        cp {output} {params.bindir}/gtdbtk.bac120.summary.tsv
         """
 
 

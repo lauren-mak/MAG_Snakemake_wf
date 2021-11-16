@@ -8,6 +8,8 @@ rule mapreads_scaffold:
         asm=join(DATA_DIR, assembly_dir, "final_polished/singlerun/{run}.polished.fasta"),
     output:
         flagstat=join(DATA_DIR, assembly_dir, "singlerun/{run}/mapreads/flagstat.txt"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/nanopore.yaml"
     params:
         dir=join(DATA_DIR, assembly_dir, "singlerun/{run}/mapreads"),
         asm=join(DATA_DIR, assembly_dir, "singlerun/{run}/{run}_scaffolds.fasta"),
@@ -101,6 +103,8 @@ rule readmap:
         catalogue=join(DATA_DIR, binning_analyses, "singlerun/framework/bwa-ref_name_vf/ref-db.fasta"),
     output:
         flagstat=join(DATA_DIR, binning_analyses, "singlerun/framework/mapreads/flagstat/{run}.txt"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/nanopore.yaml"
     params:
         alignedsorted=join(DATA_DIR, binning_analyses, "singlerun/framework/mapreads/flagstat/tmp_{run}.bam"),
     singularity:
@@ -120,6 +124,8 @@ rule readmap_coassembly:
         catalogue=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/bwa-ref_name_vf/ref-db.fasta"),
     output:
         flagstat=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/flagstat/{run}.txt"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/nanopore.yaml"
     params:
         alignedsorted=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/flagstat/tmp_{run}.bam"),
     singularity:
@@ -203,9 +209,50 @@ rule write_scaffold_coas:
 
 # ASSEMBLY AND BINNING SUMMARY STATISTICS
 
+
+rule make_reference_dir:
+    input:
+        join(DATA_DIR, binning_analyses, "singlerun_coassembly/GTDB/gtdbtk.bac120.summary.tsv"),
+    output:
+        join(DATA_DIR, assembly_dir, "metaQUAST/done.txt"),
+    params:
+        refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
+    run:
+        df = pd.read_csv(str(input), sep = '\t')
+        refs = list(df.iloc[:,2].unique())
+        if "N/A" in refs: refs = refs.remove("N/A")
+        GTDB = os.getenv('GTDBTK_DATA_PATH')
+        os.mkdirs(params.refdir)
+        for r in refs: # GCF_000190535.1
+            parts = r.split('_')
+            path = join(GTDB, 'fastani/database', parts[0], parts[1][0:3], parts[1][3:6], parts[1][6:9], r + '_genomic.fna.gz')
+            shutil.copy(path, params.refdir)
+        open(str(output), "w").close()
+
+
+rule make_reference_dir_ss:
+    input:
+        join(DATA_DIR, binning_analyses, "singlerun/GTDB/gtdbtk.bac120.summary.tsv"),
+    output:
+        join(DATA_DIR, assembly_dir, "metaQUAST/done.txt"),
+    params:
+        refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
+    run:
+        df = pd.read_csv(str(input), sep = '\t')
+        refs = list(df.iloc[:,2].unique())
+        if "N/A" in refs: refs = refs.remove("N/A")
+        GTDB = os.getenv('GTDBTK_DATA_PATH')
+        os.mkdirs(params.refdir)
+        for r in refs: # GCF_000190535.1
+            parts = r.split('_')
+            path = join(GTDB, 'fastani/database', parts[0], parts[1][0:3], parts[1][3:6], parts[1][6:9], r + '_genomic.fna.gz')
+            shutil.copy(path, params.refdir)
+        open(str(output), "w").close()
+
+
 rule metaquast:
     input:
-        join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/flagstat_sum.txt"), # Not the most efficient, but most effective without globbing
+        join(DATA_DIR, assembly_dir, "metaQUAST/done.txt"),
     output:
         join(DATA_DIR, assembly_dir, "metaQUAST/report.tsv"), # Not combined_reference/ because no reference genomes
     params:
@@ -214,6 +261,6 @@ rule metaquast:
     shell:
         """
         scaffolds=`ls data/01_assembly/final_polished/*/*.polished.fasta`
-        python /home/lam4003/bin/quast-master/metaquast.py -m {params.mincontiglength} -o {params.outdir} $scaffolds
+        python /home/lam4003/bin/quast-master/metaquast.py --threads {threads} --max-ref-number 0 -m {params.mincontiglength} -o {params.outdir} $scaffolds
         """
 

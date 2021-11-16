@@ -13,12 +13,21 @@ rule merge_coas:
     input:
         unpack(lambda wildcards: get_sample_reads_coas(wildcards.sample)),
     output:
-        fq=join(DATA_DIR, preprocessing_dir, "coassembly/{sample}.fastq.gz"),
-        ct=join(DATA_DIR, preprocessing_dir, "readcounts.tsv"),
+        join(DATA_DIR, preprocessing_dir, "coassembly/{sample}.fastq.gz"),
     shell:
         """
-        cat {input} > {output.fq}
-        cat data/00_preprocessing/singlerun/*_readcount.csv > {output.ct}
+        cat {input} > {output}
+        """
+
+
+rule count_reads_coas:
+    input:
+        join(DATA_DIR, preprocessing_dir, "coassembly/{sample}.fastq.gz"),
+    output:
+        join(DATA_DIR, preprocessing_dir, "readcounts.tsv"),        
+    shell:
+        """
+        cat data/00_preprocessing/singlerun/*_readcount.csv > {output}
         """
 
 
@@ -26,10 +35,10 @@ rule metaflye_coas:
     input:
         join(DATA_DIR, preprocessing_dir, "coassembly/{sample}.fastq.gz"),
     output:
-        join(DATA_DIR, assembly_dir, "flye_unpolished/coassembly/{run}/assembly.fasta"),
+        join(DATA_DIR, assembly_dir, "flye_unpolished/coassembly/{sample}/assembly.fasta"),
     threads: workflow.cores,
     params:
-        outdir=join(DATA_DIR, assembly_dir, "flye_unpolished/coassembly/{run}"),
+        outdir=join(DATA_DIR, assembly_dir, "flye_unpolished/coassembly/{sample}"),
     shell:
         """
         if [ -f "{params.outdir}/flye.log" ]; then
@@ -43,12 +52,14 @@ rule metaflye_coas:
 rule polish_mapping_coas:
     input:
         fq=join(DATA_DIR, preprocessing_dir, "coassembly/{sample}.fastq.gz"),
-        asm=join(DATA_DIR, assembly_dir, "flye_unpolished/coassembly/{run}/assembly.fasta"),
+        asm=join(DATA_DIR, assembly_dir, "flye_unpolished/coassembly/{sample}/assembly.fasta"),
     output:
-        join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{run}.bam"),
+        join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{sample}.bam"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/nanopore.yaml"
     threads: workflow.cores,
     params:
-        sample_name="{run}",
+        sample_name="{sample}",
         outdir=join(DATA_DIR, assembly_dir, "prelim_polished/coassembly"),
     shell:
         """
@@ -58,23 +69,39 @@ rule polish_mapping_coas:
 rule racon_coas:
     input:
         fq=join(DATA_DIR, preprocessing_dir, "coassembly/{sample}.fastq.gz"),
-        mmp=join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{run}.bam"),
-        asm=join(DATA_DIR, assembly_dir, "flye_unpolished/coassembly/{run}/assembly.fasta"),
+        mmp=join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{sample}.bam"),
+        asm=join(DATA_DIR, assembly_dir, "flye_unpolished/coassembly/{sample}/assembly.fasta"),
     output:
-        join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{run}.racon.fasta"),
+        join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{sample}.racon.fasta"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/nanopore.yaml"
+    threads: workflow.cores,
+    params:
+        num_iter=3, 
+        outdir=join(DATA_DIR, assembly_dir, "prelim_polished/coassembly"),
     threads: workflow.cores,
     shell:
         """
-        racon --t {threads} {input.fq} {input.mmp} {input.asm} > {output}
+        asm="{input.asm}"
+        for i in {1..{params.num_iter}}
+        do
+            minimap2 -ax map-ont $asm {input.fq} | samtools view -bS - | samtools sort -@ {threads} -o {params.outdir}/${i}.bam -
+            samtools index -@ {threads} {params.outdir}/${i}.bam
+            racon --t {threads} {input.fq} {params.outdir}/${i}.bam $asm > {params.outdir}/${i}.racon.fasta
+            asm={params.outdir}/${i}.racon.fasta
+        done
+        mv {params.outdir}/"{params.num_iter}.racon.fasta" {output}
         """
 
 
 rule medaka_coas:
     input:
         fq=join(DATA_DIR, preprocessing_dir, "coassembly/{sample}.fastq.gz"),
-        cn=join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{run}.racon.fasta"),
+        cn=join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{sample}.racon.fasta"),
     output:
-        join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{run}.medaka.fasta"),
+        join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{sample}.medaka.fasta"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/nanopore.yaml"
     threads: workflow.cores,
     params:
         model="r941_prom_hac_g303", 
@@ -105,15 +132,17 @@ def get_illumina_reads_coas(sample):
 
 rule pilon_coas:
     input:
-        fq=join(DATA_DIR, preprocessing_dir, "coassembly/{sample}.fastq.gz"),
-        cn=join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{run}.medaka.fasta"),
         unpack(lambda wildcards: get_illumina_reads(wildcards.sample)),
+        fq=join(DATA_DIR, preprocessing_dir, "coassembly/{sample}.fastq.gz"),
+        cn=join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{sample}.medaka.fasta"),
     output:
-        join(DATA_DIR, assembly_dir, "final_polished/coassembly/{run}.polished.fasta"),
+        join(DATA_DIR, assembly_dir, "final_polished/coassembly/{sample}.polished.fasta"),
+    conda:
+        "/home/lam4003/bin/anaconda3/envs/nanopore.yaml"
     threads: workflow.cores, 
     params:
         num_iter=2, 
-        sample_name="{run}",
+        sample_name="{sample}",
         outdir=join(DATA_DIR, assembly_dir, "final_polished/coassembly"),
     shell:
         """

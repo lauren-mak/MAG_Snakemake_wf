@@ -15,6 +15,10 @@
 
 # vim: set ft=python:
 
+
+import shutil
+
+
 # READS MAPPING TO ASSEMBLY
 
 rule mapreads_scaffold:
@@ -250,18 +254,61 @@ rule write_scaffold_coas:
 
 # ASSEMBLY AND BINNING SUMMARY STATISTICS
 
+
+rule make_reference_dir:
+    input:
+        join(DATA_DIR, binning_analyses, "singlerun_coassembly/GTDB/gtdbtk.bac120.summary.tsv"),
+    output:
+        join(DATA_DIR, assembly_dir, "metaQUAST/done.txt"),
+    params:
+        refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
+    run:
+        df = pd.read_csv(str(input), sep = '\t')
+        refs = list(df.iloc[:,2].unique())
+        if "N/A" in refs: refs = refs.remove("N/A")
+        GTDB = os.getenv('GTDBTK_DATA_PATH')
+        os.mkdirs(params.refdir)
+        for r in refs: # GCF_000190535.1
+            parts = r.split('_')
+            path = join(GTDB, 'fastani/database', parts[0], parts[1][0:3], parts[1][3:6], parts[1][6:9], r + '_genomic.fna.gz')
+            shutil.copy(path, params.refdir)
+        open(str(output), "w").close()
+
+
+rule make_reference_dir_ss:
+    input:
+        join(DATA_DIR, binning_analyses, "singlerun/GTDB/gtdbtk.bac120.summary.tsv"),
+    output:
+        join(DATA_DIR, assembly_dir, "metaQUAST/done.txt"),
+    params:
+        refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
+    run:
+        df = pd.read_csv(str(input), sep = '\t')
+        refs = list(df.iloc[:,2].unique())
+        if "N/A" in refs: refs = refs.remove("N/A")
+        GTDB = os.getenv('GTDBTK_DATA_PATH')
+        os.mkdirs(params.refdir)
+        for r in refs: # GCF_000190535.1
+            parts = r.split('_')
+            path = join(GTDB, 'fastani/database', parts[0], parts[1][0:3], parts[1][3:6], parts[1][6:9], r + '_genomic.fna.gz')
+            shutil.copy(path, params.refdir)
+        open(str(output), "w").close()
+
+
 rule metaquast:
     input:
-        join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/flagstat_sum.txt"), # Not the most efficient, but most effective without globbing
+        join(DATA_DIR, assembly_dir, "metaQUAST/done.txt"),
     output:
         join(DATA_DIR, assembly_dir, "metaQUAST/report.tsv"), # Not combined_reference/ because no reference genomes
     params:
         outdir=join(DATA_DIR, assembly_dir, "metaQUAST"),
+        refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
         mincontiglength=1000, # Report on only the contigs that are binned
+    threads: workflow.cores,
     shell:
         """
         scaffolds=`ls data/01_assembly/*/*/scaffolds.fasta`
-        python /home/lam4003/bin/quast-master/metaquast.py -m {params.mincontiglength} -o {params.outdir} $scaffolds
+        python /home/lam4003/bin/quast-master/metaquast.py --threads {threads} -r {params.refdir} -m {params.mincontiglength} -o {params.outdir} $scaffolds
         """
 
 # rule write_binning_stats:
