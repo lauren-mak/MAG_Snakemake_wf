@@ -259,7 +259,7 @@ rule make_reference_dir:
     input:
         join(DATA_DIR, binning_analyses, "singlerun_coassembly/GTDB/gtdbtk.bac120.summary.tsv"),
     output:
-        join(DATA_DIR, assembly_dir, "metaQUAST/done.txt"),
+        join(DATA_DIR, assembly_dir, "metaQUAST/done_sc.txt"),
     params:
         refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
     run:
@@ -279,7 +279,7 @@ rule make_reference_dir_ss:
     input:
         join(DATA_DIR, binning_analyses, "singlerun/GTDB/gtdbtk.bac120.summary.tsv"),
     output:
-        join(DATA_DIR, assembly_dir, "metaQUAST/done.txt"),
+        join(DATA_DIR, assembly_dir, "metaQUAST/done_ss.txt"),
     params:
         refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
     run:
@@ -295,9 +295,15 @@ rule make_reference_dir_ss:
         open(str(output), "w").close()
 
 
+def find_assembly_strategy(wildcards):
+    if open("Snakefile", "r").readline().strip().split()[1] == "COASSEMBLY":
+        return "data/01_assembly/metaQUAST/done_sc.txt"
+    else:
+        return "data/01_assembly/metaQUAST/done_ss.txt"
+
 rule metaquast:
     input:
-        join(DATA_DIR, assembly_dir, "metaQUAST/done.txt"),
+        lambda wildcards: find_assembly_strategy(wildcards), 
     output:
         join(DATA_DIR, assembly_dir, "metaQUAST/report.tsv"), # Not combined_reference/ because no reference genomes
     params:

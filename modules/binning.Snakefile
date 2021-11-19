@@ -133,7 +133,7 @@ checkpoint concoct_binning_coas:
         "/home/lam4003/bin/anaconda3/envs/concoct.yaml"
     params:
         outdir=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/"),
-        mincontiglength=1000,
+        mincontiglength=2500,
     threads: workflow.cores
     resources:
         time=lambda wildcards, attempt: 20 * attempt,

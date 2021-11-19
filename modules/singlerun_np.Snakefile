@@ -16,10 +16,22 @@ rule porechop:
         """
 
 
+def get_illumina_reads(sample):
+    sample_reads = []
+    sample_file = "illumina.txt"
+    df = pd.read_csv(sample_file, sep="\t")
+    print(df, file=sys.stderr)
+    reads = df[df["sample"] == sample]["reads"][0].split(",") # R1.fastq(.gz),R2.fastq(.gz)
+    dict = {"fw": reads[0], "rv": reads[1]}
+    print(dict)
+    return dict
+
 # Parameters mostly from https://nf-co.re/mag/2.1.0/output 
+# While nf-core MAG used Illumina reads to trim Nanopore reads, MUFFIN did not
 rule filtlong:
     input:
-        join(DATA_DIR, preprocessing_dir, "porechop/{sample}.fastq.gz"),
+        unpack(lambda wildcards: get_illumina_reads(wildcards.sample)),
+        fq=join(DATA_DIR, preprocessing_dir, "porechop/{sample}.fastq.gz"),
     output:
         join(DATA_DIR, preprocessing_dir, "filtlong/{sample}.fastq.gz"),
     params:
@@ -28,7 +40,12 @@ rule filtlong:
     threads: workflow.cores,
     shell:
         """
-        filtlong --min_length {params.short_qc} --keep_percent 90 --length_weight {params.long_len_wt} --trim --target_bases 500000000 {input} | gzip > {output}
+        filtlong -1 {input.fw} -2 {input.rv} --trim  \
+            --min_length {params.short_qc} \
+            --keep_percent 90 \
+            --length_weight {params.long_len_wt} \
+            --target_bases 500000000 \
+            {input.fq} | gzip > {output}
         """
 
 
@@ -48,10 +65,12 @@ rule remove_host_genome:
         """
         mkdir -p {params.outdir}
         prefix="{params.outdir}/{params.sample_name}.tmp"
-        minimap2 -ax map-ont {input.asm} {input.fq} | samtools view -bS -f 4 - | samtools sort -@ {threads} -o ${prefix}.bam - 
-        bedtools bamtofastq -i ${prefix}.bam -fq ${prefix}.fastq
-        gzip ${prefix}.fastq > {output}
-        rm ${prefix}*
+        minimap2 -ax map-ont {input.asm} {input.fq} -o ${{prefix}}.sam
+        samtools view -bS -f 4 ${{prefix}}.sam -o ${{prefix}}.bam
+        samtools sort -@ {threads} -o ${{prefix}}.sort.bam ${{prefix}}.bam
+        samtools fastq ${{prefix}}.sort.bam > ${{prefix}}.fastq
+        gzip -c ${{prefix}}.fastq > {output}
+        rm ${{prefix}}*
         """
 
 
@@ -116,7 +135,7 @@ rule metaflye:
         outdir=join(DATA_DIR, assembly_dir, "flye_unpolished/singlerun/{sample}"),
     shell:
         """
-        if [ -f "{params.outdir}/flye.log" ]; then
+        if [ -f "{params.outdir}/flye.log" && -f "{params.outdir}/00-assembly/draft_assembly.fasta" ]; then
             flye --resume -o {params.outdir} # Resume from the last previously completed step. Don't have to specify
         else
             flye --nano-raw {input} -o {params.outdir} -t {threads} --meta
@@ -145,62 +164,55 @@ rule racon:
         fq=join(DATA_DIR, preprocessing_dir, "singlerun/{sample}.fastq.gz"),
         asm=join(DATA_DIR, assembly_dir, "flye_unpolished/singlerun/{sample}/assembly.fasta"),
     output:
-        join(DATA_DIR, assembly_dir, "prelim_polished/singlerun/{sample}.racon.fasta"),
+        join(DATA_DIR, assembly_dir, "prelim_polished/singlerun/{sample}/racon.fasta"),
     conda:
         "/home/lam4003/bin/anaconda3/envs/nanopore.yaml"
     params:
         num_iter=3, 
-        outdir=join(DATA_DIR, assembly_dir, "prelim_polished/singlerun"),
+        outdir=join(DATA_DIR, assembly_dir, "prelim_polished/singlerun", "{sample}"),
     threads: workflow.cores,
     shell:
         """
+        mkdir -p {params.outdir}
         asm="{input.asm}"
-        for i in {1..{params.num_iter}}
+        for i in $( seq 1 "{params.num_iter}" )
         do
-            minimap2 -ax map-ont $asm {input.fq} | samtools view -bS - | samtools sort -@ {threads} -o {params.outdir}/${i}.bam -
-            samtools index -@ {threads} {params.outdir}/${i}.bam
-            racon --t {threads} {input.fq} {params.outdir}/${i}.bam $asm > {params.outdir}/${i}.racon.fasta
-            asm={params.outdir}/${i}.racon.fasta
+            prefix="{params.outdir}/${{i}}.tmp"
+            minimap2 -ax map-ont $asm {input.fq} -o ${{prefix}}.sam
+            samtools sort -@ {threads} -o ${{prefix}}.sort.sam ${{prefix}}.sam
+            racon --t {threads} {input.fq} ${{prefix}}.sort.sam $asm > ${{prefix}}.racon.fasta
+            asm="${{prefix}}.racon.fasta"
         done
-        mv {params.outdir}/"{params.num_iter}.racon.fasta" {output}
+        mv "{params.outdir}/{params.num_iter}.tmp.racon.fasta" {output}
+        rm {params.outdir}/*tmp*
         """
 
 
 rule medaka:
     input:
         fq=join(DATA_DIR, preprocessing_dir, "singlerun/{sample}.fastq.gz"),
-        cn=join(DATA_DIR, assembly_dir, "prelim_polished/singlerun/{sample}.racon.fasta"),
+        cn=join(DATA_DIR, assembly_dir, "prelim_polished/singlerun/{sample}/racon.fasta"),
     output:
-        join(DATA_DIR, assembly_dir, "prelim_polished/singlerun/{sample}.medaka.fasta"),
+        join(DATA_DIR, assembly_dir, "prelim_polished/singlerun/{sample}/medaka.fasta"),
     conda:
         "/home/lam4003/bin/anaconda3/envs/nanopore.yaml"
     threads: workflow.cores,
     params:
-        model="r941_prom_hac_g303", 
-        outdir=join(DATA_DIR, assembly_dir, "final_polished"),
+        model="r941_prom_high_g4011", 
+        outdir=join(DATA_DIR, assembly_dir, "prelim_polished/singlerun", "{sample}"),
     shell:
         """
+        mkdir -p {params.outdir}
         medaka_consensus -i {input.fq} -d {input.cn} -o {params.outdir} -t {threads} -m {params.model}
-        mv {params.outdir}/consensus.fasta {output}
+        mv "{params.outdir}/consensus.fasta" {output}
         """
-
-
-def get_illumina_reads(sample):
-    sample_reads = []
-    sample_file = "illumina.txt"
-    df = pd.read_csv(sample_file, sep="\t")
-    print(df, file=sys.stderr)
-    reads = df[df["sample"] == sample]["reads"][0].split(",") # R1.fastq(.gz),R2.fastq(.gz)
-    dict = {"fw": reads[0], "rv": reads[1]}
-    print(dict)
-    return dict
 
 
 rule pilon:
     input:
         unpack(lambda wildcards: get_illumina_reads(wildcards.sample)),
         fq=join(DATA_DIR, preprocessing_dir, "singlerun/{sample}.fastq.gz"),
-        cn=join(DATA_DIR, assembly_dir, "prelim_polished/singlerun/{sample}.medaka.fasta"),
+        cn=join(DATA_DIR, assembly_dir, "prelim_polished/singlerun/{sample}/medaka.fasta"),
     output:
         join(DATA_DIR, assembly_dir, "final_polished/singlerun/{sample}.polished.fasta"),
     conda:
@@ -208,19 +220,24 @@ rule pilon:
     threads: workflow.cores, 
     params:
         num_iter=2, 
-        outdir=join(DATA_DIR, assembly_dir, "final_polished/singlerun"),
+        outdir=join(DATA_DIR, assembly_dir, "final_polished/singlerun", "{sample}"),
     shell:
         """
+        mkdir -p {params.outdir}
         asm="{input.cn}"
-        for i in {1..{params.num_iter}}
+        for i in $( seq 1 "{params.num_iter}" )
         do
-            bwa index $asm
-            bwa mem $asm {input.fw} {input.rv} | samtools view -bS - | samtools sort -@ {threads} - {params.outdir}/${i}.bam
-            samtools index -@ {threads} {params.outdir}/${i}.bam
-            pilon -Xmx$50g --threads {threads} --genome ${asm} --bam {params.outdir}/${i}.bam --output {params.outdir}/$i".pilon"
-            asm={params.outdir}/$i".pilon.fasta"
+            bwa index ${{asm}}
+            prefix="{params.outdir}/${{i}}.tmp"
+            bwa mem ${{asm}} {input.fw} {input.rv} -o ${{prefix}}.sam
+            samtools view -bS -o ${{prefix}}.bam ${{prefix}}.sam 
+            samtools sort -@ {threads} -o ${{prefix}}.sort.bam ${{prefix}}.bam
+            samtools index -@ {threads} ${{prefix}}.sort.bam
+            pilon -Xmx50g --threads {threads} --genome ${{asm}} --bam ${{prefix}}.sort.bam --output "${{prefix}}.pilon"
+            asm="${{prefix}}.pilon.fasta"
         done
-        mv {params.outdir}/"{params.num_iter}.pilon.fasta" {output}
+        mv "{params.outdir}/{params.num_iter}.tmp.pilon.fasta" {output}
+        rm {params.outdir}/*tmp*
         """
 
 
