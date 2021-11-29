@@ -213,7 +213,7 @@ rule write_scaffold:
 
 rule write_scaffold_coas:
     input:
-        expand(join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/flagstat_parsed/{run}.txt"), run=RUN),
+        expand(join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/flagstat_parsed/{run}.txt"), run=COAS),
     output:
         join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/coas_catalogue_mapreads.tab"),
     run:

@@ -37,7 +37,27 @@ rule bin_refinement:
     shell:
         """ 
         rm -rf {params.outdir}
-        metawrap bin_refinement -o {params.outdir} -t {threads} -A {params.metabat} -B {params.maxbin} -C {params.concoct} -c 50 -x 10 || echo "{params.sample_name} failed to produce refined bins with the thresholds 50% completeness and 10% contamination"
+        opts=("A" "B" "C")
+        bins=()
+        if [ `ls {params.metabat} | wc -l` -gt 1 ]; # If MetaBAT generated bins
+        then
+            bins+=({params.metabat})
+        fi
+        if [ `ls {params.maxbin} | wc -l` -gt 1 ]; # If MetaBAT generated bins
+        then
+            bins+=({params.maxbin})
+        fi
+        if [ `ls {params.concoct} | wc -l` -gt 1 ]; # If MetaBAT generated bins
+        then
+            bins+=({params.concoct})
+        fi
+        cmd=""
+        for (( i=0; i<${{#bins[@]}}; i++ )); 
+        do 
+            cmd+=" -${{opts[$i]}} ${{bins[$i]}}"
+        done
+
+        metawrap bin_refinement -o {params.outdir} -t {threads} ${{cmd}} -c 50 -x 10 || echo "{params.sample_name} failed to produce refined bins with the thresholds 50% completeness and 10% contamination"
         mkdir -p {params.outdir}/metawrap_50_10_bins # In case the sample doesn't generate bins
         touch {output}
         """

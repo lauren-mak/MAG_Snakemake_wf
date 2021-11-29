@@ -6,9 +6,9 @@
 __default__:
     nCPU: 1
     mem: 8000
-    output: "logs/{rule}.{wildcards}.%j.out"
-    error: "logs/{rule}.{wildcards}.%j.err"
-    job-name: "{rule}.{wildcards}"
+    output: "logs/{rule}.{wildcards}.%j.out" # Wildcards are the most unconstrained therefore least findable
+    # error: "logs/{rule}.{wildcards}.%j.err" # To redirect all STDOUT to the same file. Also removed in run_msw.sh
+    job-name: "{rule}.{wildcards}.%j"
     time: "7-00:00:00"
 
 
