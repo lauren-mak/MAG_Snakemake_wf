@@ -16,18 +16,8 @@ rule merge_coas:
         join(DATA_DIR, preprocessing_dir, "coassembly/{sample}.fastq.gz"),
     shell:
         """
+        cat data/00_preprocessing/singlerun/*_readcount.csv > data/00_preprocessing/singlerun/readcounts.tsv
         cat {input} > {output}
-        """
-
-
-rule count_reads_coas:
-    input:
-        join(DATA_DIR, preprocessing_dir, "coassembly/{sample}.fastq.gz"),
-    output:
-        join(DATA_DIR, preprocessing_dir, "readcounts.tsv"),        
-    shell:
-        """
-        cat data/00_preprocessing/singlerun/*_readcount.csv > {output}
         """
 
 
@@ -116,26 +106,19 @@ rule medaka_coas:
         """
 
 
-def get_illumina_reads_coas(sample):
-    sample_reads = []
-    sample_file = "coassembly_runs.txt"
-    df = pd.read_csv(sample_file, sep="\t")
-    print(df, file=sys.stderr)
-    datasets = df[df["coassembly"] == sample]["datasets"][0].split(",") # S1,S2
-    fw = []
-    rv = []
-    for i in dataset:
-        r = get_illumina_reads(i)
-        fw.append(r["fw"]) # [x_1.fastq, x_2.fastq, ...]
-        rv.append(r["rv"])
-    dict = {"fw": " ".join(fw), "rv": " ".join(rv)} # {fw: "x_1.fastq x_2.fastq"}
+def get_illumina_reads_coas(sample, step):
+    pt_id = FASTQ_DIR.split("_")[-1] 
+    fq_dir = join("/athena/masonlab/scratch/users/lam4003/MIAB_Illumina_" + pt_id, "data/00_preprocessing/processed/coassembly")
+    dict = {"fw": fq_dir + "/S_coas_1.fastq.gz", "rv": fq_dir + "/S_coas_2.fastq.gz"}
+    print(pt_id + " " + sample)
+    print(step)
     print(dict)
     return dict
 
 
 rule pilon_coas:
     input:
-        unpack(lambda wildcards: get_illumina_reads(wildcards.sample)),
+        unpack(lambda wildcards: get_illumina_reads_coas(wildcards.sample, "coassembly,pilon")),
         fq=join(DATA_DIR, preprocessing_dir, "coassembly/{sample}.fastq.gz"),
         cn=join(DATA_DIR, assembly_dir, "prelim_polished/coassembly/{sample}/medaka.fasta"),
     output:

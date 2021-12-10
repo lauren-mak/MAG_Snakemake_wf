@@ -16,13 +16,13 @@ rule porechop:
         """
 
 
-def get_illumina_reads(sample):
-    sample_reads = []
+def get_illumina_reads(sample, step):
     sample_file = "illumina.txt"
     df = pd.read_csv(sample_file, sep="\t")
-    print(df, file=sys.stderr)
-    reads = df[df["sample"] == sample]["reads"][0].split(",") # R1.fastq(.gz),R2.fastq(.gz)
+    reads = df[df["sample"] == sample]["reads"].tolist()[0].split(",") # R1.fastq(.gz),R2.fastq(.gz)
     dict = {"fw": reads[0], "rv": reads[1]}
+    print(sample)
+    print(step)
     print(dict)
     return dict
 
@@ -30,7 +30,7 @@ def get_illumina_reads(sample):
 # While nf-core MAG used Illumina reads to trim Nanopore reads, MUFFIN did not
 rule filtlong:
     input:
-        unpack(lambda wildcards: get_illumina_reads(wildcards.sample)),
+        unpack(lambda wildcards: get_illumina_reads(wildcards.sample, "singlerun,filtlong")),
         fq=join(DATA_DIR, preprocessing_dir, "porechop/{sample}.fastq.gz"),
     output:
         join(DATA_DIR, preprocessing_dir, "filtlong/{sample}.fastq.gz"),
@@ -42,9 +42,8 @@ rule filtlong:
         """
         filtlong -1 {input.fw} -2 {input.rv} --trim  \
             --min_length {params.short_qc} \
-            --keep_percent 90 \
-            --length_weight {params.long_len_wt} \
-            --target_bases 500000000 \
+            --mean_q_weight 10 \
+            --split 100 \
             {input.fq} | gzip > {output}
         """
 
@@ -210,7 +209,7 @@ rule medaka:
 
 rule pilon:
     input:
-        unpack(lambda wildcards: get_illumina_reads(wildcards.sample)),
+        unpack(lambda wildcards: get_illumina_reads(wildcards.sample, "singlerun,pilon")),
         fq=join(DATA_DIR, preprocessing_dir, "singlerun/{sample}.fastq.gz"),
         cn=join(DATA_DIR, assembly_dir, "prelim_polished/singlerun/{sample}/medaka.fasta"),
     output:

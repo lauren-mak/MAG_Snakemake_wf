@@ -64,13 +64,13 @@ checkpoint concoct_binning:
 checkpoint metawrap_binning_coas:
     input:
         unpack(get_sample_reads),
-        join(DATA_DIR, assembly_dir, "final_polished/coassembly/{run}.polished.fasta"),
+        join(DATA_DIR, assembly_dir, "final_polished/coassembly/{sample}.polished.fasta"),
     output:
         outfile=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/metawrap_done.txt"),
     conda:
         "/home/lam4003/bin/anaconda3/envs/binning.yaml"
     params:
-        assembly=join(DATA_DIR, assembly_dir, "final_polished/{run}.polished.fasta"),
+        assembly=join(DATA_DIR, assembly_dir, "final_polished/{sample}.polished.fasta"),
         outdir=join(DATA_DIR, binning_dir, "coassembly/{sample}/metawrap/"),
         reads=lambda wildcards: metawrap_cmmd(wildcards),
         mincontiglength=1000,

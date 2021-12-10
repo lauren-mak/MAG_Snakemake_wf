@@ -6,20 +6,25 @@
 __default__:
     nCPU: 1
     mem: 8000
-    output: "logs/{rule}.{wildcards}.%j.out"
-    error: "logs/{rule}.{wildcards}.%j.err"
-    job-name: "{rule}.{wildcards}"
+    output: "logs/{rule}.{wildcards}.%j.out" # Wildcards are the most unconstrained therefore least findable
+    # error: "logs/{rule}.{wildcards}.%j.err" # To redirect all STDOUT to the same file. Also removed in run_msw.sh
+    job-name: "{rule}.{wildcards}.%j"
     time: "7-00:00:00"
 
 
 porechop:
-    nCPU: 5
-    mem : 10000
+    nCPU: 30
+    mem : 500000
 
 
 filtlong:
-    nCPU: 5
-    mem: 10000
+    nCPU: 30
+    mem: 200000
+
+
+remove_host_genome:
+    nCPU: 20
+    mem: 100000
 
 
 metaflye:
@@ -28,23 +33,23 @@ metaflye:
 
 
 polish_mapping:
-    nCPU : 5
-    mem : 50000
+    nCPU : 20
+    mem : 100000
 
 
 racon:
-    nCPU : 5
-    mem : 50000
+    nCPU : 20
+    mem : 100000
 
 
 medaka:
-    nCPU : 5
-    mem : 50000
+    nCPU : 20
+    mem : 100000
 
 
 pilon:
-    nCPU : 5
-    mem : 50000
+    nCPU : 20
+    mem : 100000
 
 
 metaflye_coas:
@@ -53,23 +58,23 @@ metaflye_coas:
 
 
 polish_mapping_coas:
-    nCPU : 5
-    mem : 75000
+    nCPU : 20
+    mem : 150000
 
 
 racon_coas:
-    nCPU : 5
-    mem : 75000
+    nCPU : 20
+    mem : 150000
 
 
 medaka_coas:
-    nCPU : 5
-    mem : 75000
+    nCPU : 20
+    mem : 150000
 
 
 pilon_coas:
-    nCPU : 5
-    mem : 75000
+    nCPU : 20
+    mem : 150000
 
 
 metawrap_binning:

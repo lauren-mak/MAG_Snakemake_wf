@@ -128,7 +128,7 @@ dRep_95_coas:
 
 
 GTDB_TK:
-    mem : 500000
+    mem : 800000
     nCPU: 2
 
 

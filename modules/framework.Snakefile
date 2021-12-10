@@ -264,12 +264,12 @@ rule make_reference_dir:
         refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
     run:
         df = pd.read_csv(str(input), sep = '\t')
-        refs = list(df.iloc[:,2].unique())
-        if "N/A" in refs: refs = refs.remove("N/A")
+        refs_tmp = list(df.iloc[:,2].unique())
+        refs = [r for r in refs_tmp if str(r) != 'nan']
         GTDB = os.getenv('GTDBTK_DATA_PATH')
-        os.mkdirs(params.refdir)
+        if not os.path.isdir(params.refdir): os.makedirs(params.refdir)
         for r in refs: # GCF_000190535.1
-            parts = r.split('_')
+            parts = str(r).split('_')
             path = join(GTDB, 'fastani/database', parts[0], parts[1][0:3], parts[1][3:6], parts[1][6:9], r + '_genomic.fna.gz')
             shutil.copy(path, params.refdir)
         open(str(output), "w").close()
@@ -284,10 +284,10 @@ rule make_reference_dir_ss:
         refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
     run:
         df = pd.read_csv(str(input), sep = '\t')
-        refs = list(df.iloc[:,2].unique())
-        if "N/A" in refs: refs = refs.remove("N/A")
+        refs_tmp = list(df.iloc[:,2].unique())
+        refs = [r for r in refs_tmp if str(r) != 'nan']
         GTDB = os.getenv('GTDBTK_DATA_PATH')
-        os.mkdirs(params.refdir)
+        if not os.path.isdir(params.refdir): os.makedirs(params.refdir)
         for r in refs: # GCF_000190535.1
             parts = r.split('_')
             path = join(GTDB, 'fastani/database', parts[0], parts[1][0:3], parts[1][3:6], parts[1][6:9], r + '_genomic.fna.gz')
@@ -305,7 +305,7 @@ rule metaquast:
     input:
         lambda wildcards: find_assembly_strategy(wildcards), 
     output:
-        join(DATA_DIR, assembly_dir, "metaQUAST/report.tsv"), # Not combined_reference/ because no reference genomes
+        join(DATA_DIR, assembly_dir, "metaQUAST/combined_reference/report.tsv"),
     params:
         outdir=join(DATA_DIR, assembly_dir, "metaQUAST"),
         refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
@@ -314,7 +314,7 @@ rule metaquast:
     shell:
         """
         scaffolds=`ls data/01_assembly/*/*/scaffolds.fasta`
-        python /home/lam4003/bin/quast-master/metaquast.py --threads {threads} -r {params.refdir} -m {params.mincontiglength} -o {params.outdir} $scaffolds
+        python /home/lam4003/bin/quast-master/metaquast.py --threads {threads} -r {params.refdir} -m {params.mincontiglength} -o {params.outdir} $scaffolds --no-plots
         """
 
 # rule write_binning_stats:

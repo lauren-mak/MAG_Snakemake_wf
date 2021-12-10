@@ -1,0 +1,135 @@
+# MAG_MAG_COMPARISON
+
+import os
+from os.path import basename, join
+import sys
+import glob
+import pandas as pd
+import csv
+
+# Directory structure
+match_dir = "best_matches"
+
+LIST_DIR = "/athena/masonlab/scratch/users/lam4003/MIAB_MAG_Lists"
+if not os.path.exists("logs"):
+    os.makedirs("logs")
+
+# LOAD METADATA
+PT_ID = 'X' # The participant ID
+TOOLS = ['B', 'H'] # B = MetaWRAP (standard), H = Proximeta (Hi-C)
+BIN_DIRS = {'B': "/athena/masonlab/scratch/users/lam4003/MIAB_Illumina_{PT_ID}/data/02_binning/coassembly/S_coas/refined_bins_50_10", 'H': "/athena/masonlab/scratch/users/lam4003/MIAB_Illumina_Proximeta/{PT_ID}/phase_rerun_bins"}
+
+all_outfiles = [
+    join(match_dir, "fastani_matches.csv"),
+    # join(match_dir, "fastani_distances.csv"),
+]
+
+
+def test(wildcards):
+    print(BIN_DIRS)
+    print(wildcards.tool)
+    print(BIN_DIRS[wildcards.tool])
+    return "done.txt"
+
+# rule make_mag_list:
+#     input:
+#         test,
+#     output:
+#         join(LIST_DIR, PT_ID + "_{tool}.txt"),
+#     shell:
+#         """
+#         find {input} -type f > {output}
+#         """
+
+
+# rule check_mag_lists:
+#     input: 
+#         expand(join(LIST_DIR, PT_ID + "_{tool}.txt"), tool = TOOLS),
+#     output:
+#         join(LIST_DIR, PT_ID + "_done.txt"),
+#     shell:
+#         """
+#         touch {output}
+#         """
+
+
+# def get_other_mags(wildcards):
+#     tmp = list(TOOLS)
+#     print(tmp)
+#     print(wildcards)
+#     return join(LIST_DIR, PT_ID + "_" + tmp.remove(wildcards.tool)[0] + ".txt"),
+
+# rule fastani:
+#     input:
+#         "test.txt", # join(LIST_DIR, PT_ID + "_{tool}.txt"),
+#     output:
+#         "done.txt",
+#         # join("fastani", PT_ID + "_{tool}_raw_output.tsv"),
+#         # join("fastani", PT_ID + "_{tool}_raw_output.tsv.matrix"),
+#     params:
+#         r = get_other_mags,
+#     shell:
+#         """
+#         fastANI --ql {input} --rl {params.r} -o {output} --matrix # {output}.matrix
+#         """
+
+
+# rule fastani_make_bms:
+#     input:
+#         join("fastani", PT_ID + "_{tool}_raw_output.tsv"),
+#     output:
+#         join("fastani", PT_ID + "_{tool}_bms_output.csv"), # [tool,bin_X,NA,dist_X]
+#     params:
+#         tool = "{tool}",
+#     run:
+#         df = pd.read_csv(str(input), sep = '\t', header = None).iloc[:,[0,1,2]] # Get rid of the last two columns
+#         df.iloc[:,0] = [basename(i).split('.')[0] for i in df.iloc[:,0]] # Get rid of absolute path and '.fasta'
+#         df.iloc[:,1] = [basename(i).split('.')[0] for i in df.iloc[:,1]] # Get rid of absolute path and '.fasta'
+#         best_matches = {}
+#         for i, row in df.iterrows(): # Keep only matches that are the best matches ANI-wise
+#             if row[0] not in best_matches:
+#                 best_matches[row[0]] = [row[1], row[2]]
+#             else: 
+#                 if row[2] > best_matches[row[0]][1]:
+#                     best_matches[row[0]] = [row[1], row[2]] # Replace only if this match is more similar ANI-wise
+#         all_bins_raw = open(join(LIST_DIR, PT_ID + "_{tool}.txt"), 'r').read()
+#         all_bins_fin = ['_'.join(basename(i).split('.')[:-1]) for i in all_bins_raw]
+#         unmatched_bins = [b for b in all_bins_fin if b not in best_matches.keys()] # List of no-match bins
+#         for b in unmatched_bins: best_matches[b] = ["NA","NA"]
+#         out_dct = {'0': [], '1': [], '2': []}
+#         for b in best_matches:
+#             out_dct['0'] += [b]
+#             out_dct['1'] += [best_matches[b][0]]
+#             out_dct['2'] += [best_matches[b][1]]
+#         out_df = pd.DataFrame(out_dct)
+#         out_df.insert(loc = 0, column = "{params.tool}", value = "H", allow_duplicates = True) # Add tool name as first column
+#         out_df.to_csv(str(output), index = False)
+
+
+# rule fastani_make_dst:
+#     input:
+#         join("fastani", PT_ID + "_B_raw_output.tsv.matrix"), # "_".join([PT_ID, TOOLS[0], "raw_output.tsv.matrix"])),
+#     output:
+#         join(match_dir, "fastani_distances.csv"), # [dist_X,dist_Y,...]        
+#     run:
+#         raw_lst = open(str(input), 'r').read().replace('\n','\t').split('\t')[1:-1]
+#         fin_lst = [float(i) for i in raw_lst if i != 'NA' and 'fa' not in i]
+#         csv.writer(open(str(output), 'w')).writerow(fin_lst)
+
+
+rule fastani_concat_bms:
+    input:
+        expand(join("fastani", PT_ID + "_{tool}_bms_output.csv"), tool=TOOLS),
+    output:
+        join(match_dir, "fastani_matches.csv"),
+    shell:
+        """
+        print({input})
+        cat {input} > {output}
+        """
+
+
+rule all:
+   input: all_outfiles
+
+

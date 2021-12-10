@@ -24,7 +24,7 @@ def get_sample_reads_cmseq(sample):
     datasets = df[df["coassembly"] == sample]["datasets"][0].split(",") # S1,S2
     prefix = join(DATA_DIR, preprocessing_dir, "singlerun")
     return [join(prefix, i + ".fastq.gz") for i in datasets]
-1
+
 
 rule rename_fasta:
     input:

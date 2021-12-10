@@ -10,10 +10,11 @@ rule mapreads_scaffold:
         flagstat=join(DATA_DIR, assembly_dir, "singlerun/{run}/mapreads/flagstat.txt"),
     conda:
         "/home/lam4003/bin/anaconda3/envs/nanopore.yaml"
+    threads: workflow.cores,
     params:
         dir=join(DATA_DIR, assembly_dir, "singlerun/{run}/mapreads"),
         asm=join(DATA_DIR, assembly_dir, "singlerun/{run}/{run}_scaffolds.fasta"),
-        alignedsorted=join(DATA_DIR, assembly_dir, "singlerun//{run}/mapreads/alignedsorted.bam"),
+        prefix=join(DATA_DIR, assembly_dir, "singlerun/{run}/mapreads/alignedsorted"),
     singularity:
         "shub://sskashaf/MAG_wf_containers_2021:framework"
     shell:
@@ -21,10 +22,12 @@ rule mapreads_scaffold:
         rm -rf {params.dir}
         mkdir -p {params.dir}
         scp {input.asm} {params.asm}
-        minimap2 -ax map-ont {input.asm} {input.fq} | samtools view -bS - | samtools sort -@ {threads} -o {params.alignedsorted} -
-        samtools index {params.alignedsorted}
-        samtools flagstat {params.alignedsorted} > {output.flagstat}
-        rm {params.alignedsorted}
+        minimap2 -ax map-ont {input.asm} {input.fq} -o {params.prefix}.sam
+        samtools view -bS {params.prefix}.sam -o {params.prefix}.bam
+        samtools sort -@ {threads} -o {params.prefix}.sort.bam {params.prefix}.bam
+        samtools index {params.prefix}.sort.bam
+        samtools flagstat {params.prefix}.sort.bam > {output.flagstat}
+        rm {params.prefix}*
         """
 
 
@@ -105,16 +108,19 @@ rule readmap:
         flagstat=join(DATA_DIR, binning_analyses, "singlerun/framework/mapreads/flagstat/{run}.txt"),
     conda:
         "/home/lam4003/bin/anaconda3/envs/nanopore.yaml"
+    threads: workflow.cores,
     params:
-        alignedsorted=join(DATA_DIR, binning_analyses, "singlerun/framework/mapreads/flagstat/tmp_{run}.bam"),
+        prefix=join(DATA_DIR, binning_analyses, "singlerun/framework/mapreads/flagstat/tmp_{run}"),
     singularity:
         "shub://sskashaf/MAG_wf_containers_2021:framework"
     shell:
         """
-        minimap2 -ax map-ont {input.catalogue} {input.fq} | samtools view -bS - | samtools sort -@ {threads} -o {params.alignedsorted} -
-        samtools index {params.alignedsorted}
-        samtools flagstat {params.alignedsorted} > {output.flagstat}
-        rm {params.alignedsorted}
+        minimap2 -ax map-ont {input.catalogue} {input.fq} -o {params.prefix}.sam
+        samtools view -bS {params.prefix}.sam -o {params.prefix}.bam
+        samtools sort -@ {threads} -o {params.prefix}.sort.bam {params.prefix}.bam
+        samtools index {params.prefix}.sort.bam
+        samtools flagstat {params.prefix}.sort.bam > {output.flagstat}
+        rm {params.prefix}*
         """
 
 
@@ -126,16 +132,19 @@ rule readmap_coassembly:
         flagstat=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/flagstat/{run}.txt"),
     conda:
         "/home/lam4003/bin/anaconda3/envs/nanopore.yaml"
+    threads: workflow.cores,
     params:
-        alignedsorted=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/flagstat/tmp_{run}.bam"),
+        prefix=join(DATA_DIR, binning_analyses, "singlerun_coassembly/framework/mapreads/flagstat/tmp_{run}"),
     singularity:
         "shub://sskashaf/MAG_wf_containers_2021:framework"
     shell:
         """
-        minimap2 -ax map-ont {input.catalogue} {input.fq} | samtools view -bS - | samtools sort -@ {threads} -o {params.alignedsorted} -
-        samtools index {params.alignedsorted}
-        samtools flagstat {params.alignedsorted} > {output.flagstat}
-        rm {params.alignedsorted}
+        minimap2 -ax map-ont {input.catalogue} {input.fq} -o {params.prefix}.sam
+        samtools view -bS {params.prefix}.sam -o {params.prefix}.bam
+        samtools sort -@ {threads} -o {params.prefix}.sort.bam {params.prefix}.bam
+        samtools index {params.prefix}.sort.bam
+        samtools flagstat {params.prefix}.sort.bam > {output.flagstat}
+        rm {params.prefix}*
         """
 
 
@@ -219,10 +228,10 @@ rule make_reference_dir:
         refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
     run:
         df = pd.read_csv(str(input), sep = '\t')
-        refs = list(df.iloc[:,2].unique())
-        if "N/A" in refs: refs = refs.remove("N/A")
+        refs_tmp = list(df.iloc[:,2].unique())
+        refs = [r for r in refs_tmp if str(r) != 'nan']
         GTDB = os.getenv('GTDBTK_DATA_PATH')
-        os.mkdirs(params.refdir)
+        if not os.path.isdir(params.refdir): os.makedirs(params.refdir)
         for r in refs: # GCF_000190535.1
             parts = r.split('_')
             path = join(GTDB, 'fastani/database', parts[0], parts[1][0:3], parts[1][3:6], parts[1][6:9], r + '_genomic.fna.gz')
@@ -239,10 +248,10 @@ rule make_reference_dir_ss:
         refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
     run:
         df = pd.read_csv(str(input), sep = '\t')
-        refs = list(df.iloc[:,2].unique())
-        if "N/A" in refs: refs = refs.remove("N/A")
+        refs_tmp = list(df.iloc[:,2].unique())
+        refs = [r for r in refs_tmp if str(r) != 'nan']
         GTDB = os.getenv('GTDBTK_DATA_PATH')
-        os.mkdirs(params.refdir)
+        if not os.path.isdir(params.refdir): os.makedirs(params.refdir)
         for r in refs: # GCF_000190535.1
             parts = r.split('_')
             path = join(GTDB, 'fastani/database', parts[0], parts[1][0:3], parts[1][3:6], parts[1][6:9], r + '_genomic.fna.gz')
@@ -250,7 +259,7 @@ rule make_reference_dir_ss:
         open(str(output), "w").close()
 
 
-def find_assembly_strategy(sample):
+def find_assembly_strategy(wildcards):
     if open("Snakefile", "r").readline().strip().split()[1] == "COASSEMBLY":
         return "data/01_assembly/metaQUAST/done_sc.txt"
     else:
@@ -260,13 +269,14 @@ rule metaquast:
     input:
         lambda wildcards: find_assembly_strategy(wildcards), 
     output:
-        join(DATA_DIR, assembly_dir, "metaQUAST/report.tsv"), # Not combined_reference/ because no reference genomes
+        join(DATA_DIR, assembly_dir, "metaQUAST/combined_reference/report.tsv"),
     params:
         outdir=join(DATA_DIR, assembly_dir, "metaQUAST"),
+        refdir=join(DATA_DIR, assembly_dir, "metaQUAST/references"),
         mincontiglength=1000, # Report on only the contigs that are binned
     shell:
         """
         scaffolds=`ls data/01_assembly/final_polished/*/*.polished.fasta`
-        python /home/lam4003/bin/quast-master/metaquast.py --threads {threads} --max-ref-number 0 -m {params.mincontiglength} -o {params.outdir} $scaffolds
+        python /home/lam4003/bin/quast-master/metaquast.py --threads {threads} -r {params.refdir} -m {params.mincontiglength} -o {params.outdir} $scaffolds --no-plots
         """
 

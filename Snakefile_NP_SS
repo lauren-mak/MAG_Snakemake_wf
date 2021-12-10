@@ -83,7 +83,7 @@ all_outfiles = [
 
 rule copy_output:
     input:
-        mtquast_in=join(DATA_DIR, assembly_dir,     "metaQUAST/report.tsv"),
+        mtquast_in=join(DATA_DIR, assembly_dir,     "metaQUAST/combined_reference/report.tsv"),
         cmseq_1_in=join(DATA_DIR, binning_analyses, "singlerun/cmseq/summ_cmseq_all.csv"),
         gtdbt_1_in=join(DATA_DIR, binning_analyses, "singlerun/GTDB/gtdbtk.bac120.summary.tsv"),
         fwork_1_in=join(DATA_DIR,preprocessing_dir, "readcounts.tsv"),
