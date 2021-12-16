@@ -31,7 +31,7 @@ rule metaflye_coas:
         outdir=join(DATA_DIR, assembly_dir, "flye_unpolished/coassembly/{sample}"),
     shell:
         """
-        if [ -f "{params.outdir}/flye.log" && -f "{params.outdir}/00-assembly/draft_assembly.fasta" ]; then
+        if [[ -f "{params.outdir}/flye.log" && -f "{params.outdir}/00-assembly/draft_assembly.fasta" ]]; then
             flye --resume -o {params.outdir} # Resume from the last previously completed step. Don't have to specify
         else
             flye --nano-raw {input} -o {params.outdir} -t {threads} --meta

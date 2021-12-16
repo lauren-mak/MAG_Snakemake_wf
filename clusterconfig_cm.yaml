@@ -1,0 +1,17 @@
+#'''
+#   Author: Lauren Mak
+#   Last updated: 12/13/2021
+#'''
+
+__default__:
+    nCPU: 1
+    mem: 8000
+    output: "logs/{rule}.{wildcards}.%j.out" # Wildcards are the most unconstrained therefore least findable
+    job-name: "{rule}.{wildcards}.%j"
+    time: "7-00:00:00"
+
+
+fastani:
+    nCPU: 20
+    mem: 100000
+

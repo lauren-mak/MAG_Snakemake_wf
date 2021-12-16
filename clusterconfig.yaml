@@ -128,8 +128,8 @@ dRep_95_coas:
 
 
 GTDB_TK:
-    mem : 800000
-    nCPU: 2
+    mem : 750000
+    nCPU: 20
 
 
 mapreads_scaffold:
