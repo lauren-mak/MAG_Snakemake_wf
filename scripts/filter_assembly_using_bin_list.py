@@ -21,5 +21,5 @@ with open(sys.argv[1], 'r') as file_with_paths:
 with open(sys.argv[2]) as assembly_file:
     with open(sys.argv[3], 'w') as assembly_file_new:
         for record in SeqIO.parse(assembly_file, "fasta"):
-            if record.id is used:
-                SeqIO.write(assembly_file_new, record)
+            if record.id in used:
+                SeqIO.write(record, assembly_file_new, "fasta")
